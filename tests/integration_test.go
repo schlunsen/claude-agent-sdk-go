@@ -224,7 +224,9 @@ func TestClientIntegration_FullSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() failed: %v", err)
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// Verify not connected initially
 	if client.IsConnected() {
@@ -307,7 +309,7 @@ func TestClientIntegration_MultipleQueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() failed: %v", err)
 	}
-	defer client.Close(ctx)
+	defer func() { _ = client.Close(ctx) }()
 
 	if err := client.Connect(ctx); err != nil {
 		t.Fatalf("Connect() failed: %v", err)
@@ -391,7 +393,9 @@ func TestClientIntegration_WithPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() failed: %v", err)
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// Note: Without actual Claude CLI, we can't test permission flow
 	// But we verify the client was created with the callback
@@ -446,7 +450,7 @@ func TestClientIntegration_WithHooks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() failed: %v", err)
 	}
-	defer client.Close(ctx)
+	defer func() { _ = client.Close(ctx) }()
 
 	// Note: Without actual Claude CLI, we can't test hook flow
 	// But we verify the client was created with hooks
@@ -496,7 +500,9 @@ func TestControlProtocol_FullFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() failed: %v", err)
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// Connect
 	if err := client.Connect(ctx); err != nil {
@@ -618,6 +624,11 @@ func TestRealCLIIntegration(t *testing.T) {
 	}
 
 	// Collect messages
+	defer func() {
+		for range msgChan {
+			// drain any remaining messages
+		}
+	}()
 	collected := CollectMessages(ctx, t, msgChan, 30*time.Second)
 
 	if len(collected) == 0 {

@@ -33,7 +33,9 @@ func main() {
 	if err := client.Connect(ctx); err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	fmt.Println("Connected! Type your questions (press Ctrl+C to exit)")
 	fmt.Println("---")

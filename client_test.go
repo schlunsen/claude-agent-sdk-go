@@ -74,7 +74,9 @@ func TestClient_ConnectBeforeQuery(t *testing.T) {
 	if err != nil {
 		t.Skip("Could not create client")
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// Try to query without connecting
 	err = client.Query(ctx, "test")
@@ -95,7 +97,9 @@ func TestClient_EmptyPrompt(t *testing.T) {
 	if err != nil {
 		t.Skip("Could not create client")
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// Without connecting, should get connection error first
 	err = client.Query(ctx, "")
@@ -117,7 +121,9 @@ func TestClient_IsConnected(t *testing.T) {
 	if err != nil {
 		t.Skip("Could not create client")
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// Should not be connected initially
 	if client.IsConnected() {
@@ -141,7 +147,9 @@ func TestClient_DoubleConnect(t *testing.T) {
 	if err != nil {
 		t.Skip("Could not create client")
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// First connect attempt (will likely fail with /bin/echo)
 	err1 := client.Connect(ctx)
@@ -191,7 +199,9 @@ func TestClient_ContextCancellation(t *testing.T) {
 	if err != nil {
 		t.Skip("Could not create client")
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// Cancel context before operations
 	cancel()
@@ -222,7 +232,9 @@ func TestClient_Integration(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	// Connect
 	if err := client.Connect(ctx); err != nil {
@@ -293,7 +305,9 @@ func TestClient_MultipleQueries(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	defer client.Close(ctx)
+	defer func() {
+		_ = client.Close(ctx)
+	}()
 
 	if err := client.Connect(ctx); err != nil {
 		if types.IsCLIConnectionError(err) {

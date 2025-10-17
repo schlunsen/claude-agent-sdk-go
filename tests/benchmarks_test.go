@@ -70,12 +70,12 @@ func BenchmarkClient_QueryCycle(b *testing.B) {
 		}
 
 		if err := client.Connect(ctx); err != nil {
-			client.Close(ctx)
+			_ = client.Close(ctx)
 			continue // Connection might fail with mock CLI
 		}
 
 		if err := client.Query(ctx, "test"); err != nil {
-			client.Close(ctx)
+			_ = client.Close(ctx)
 			continue
 		}
 
@@ -83,7 +83,7 @@ func BenchmarkClient_QueryCycle(b *testing.B) {
 		for range client.ReceiveResponse(ctx) {
 		}
 
-		client.Close(ctx)
+		_ = client.Close(ctx)
 	}
 }
 
@@ -174,7 +174,7 @@ func BenchmarkClient_Create(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		client, err := claude.NewClient(ctx, opts)
 		if err == nil {
-			client.Close(ctx)
+			_ = client.Close(ctx)
 		}
 	}
 }
@@ -201,10 +201,10 @@ func BenchmarkClient_Connect(b *testing.B) {
 		}
 
 		if err := client.Connect(ctx); err != nil {
-			client.Close(ctx)
+			_ = client.Close(ctx)
 			continue
 		}
-		client.Close(ctx)
+		_ = client.Close(ctx)
 	}
 }
 
