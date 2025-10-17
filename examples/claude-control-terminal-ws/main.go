@@ -121,7 +121,7 @@ func logsCommand() {
 }
 
 func printUsage() {
-	fmt.Println(`Claude Control Terminal WebSocket Server
+	fmt.Print(`Claude Control Terminal WebSocket Server
 
 A WebSocket server that integrates with the Claude Agent SDK to provide
 remote access to Claude AI through WebSocket connections.
