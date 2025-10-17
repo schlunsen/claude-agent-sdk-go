@@ -52,7 +52,7 @@ func (l *Launcher) IsRunning() (bool, int, error) {
 	// Check if process is running
 	if !isProcessRunning(pid) {
 		// Stale PID file, remove it
-		os.Remove(l.Config.PIDFile)
+		_ = os.Remove(l.Config.PIDFile)
 		return false, 0, nil
 	}
 
@@ -89,7 +89,7 @@ func (l *Launcher) Start() error {
 	mux.Handle("/ws", websocket.Handler(l.handler.HandleWebSocket))
 	mux.Handle("/health", websocket.Handler(l.handler.HealthCheck))
 
-	addr := fmt.Sprintf("%s:%d", l.Config.Host, l.Config.Port)
+	addr := net.JoinHostPort(l.Config.Host, strconv.Itoa(l.Config.Port))
 	l.server = &http.Server{
 		Addr:    addr,
 		Handler: mux,
@@ -116,14 +116,14 @@ func (l *Launcher) Start() error {
 	// Verify the server is actually listening
 	conn, err := net.DialTimeout("tcp", addr, time.Second)
 	if err != nil {
-		l.server.Shutdown(context.Background())
+		_ = l.server.Shutdown(context.Background())
 		return fmt.Errorf("server failed to listen on %s: %w", addr, err)
 	}
-	conn.Close()
+	_ = conn.Close()
 
 	// Write PID file
 	if err := l.writePIDFile(os.Getpid()); err != nil {
-		l.server.Shutdown(context.Background())
+		_ = l.server.Shutdown(context.Background())
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 
@@ -159,7 +159,7 @@ func (l *Launcher) Stop() error {
 	// Wait for process to stop (up to 10 seconds)
 	for i := 0; i < 10; i++ {
 		if !isProcessRunning(pid) {
-			os.Remove(l.Config.PIDFile)
+			_ = os.Remove(l.Config.PIDFile)
 			l.log("Server stopped")
 			return nil
 		}
@@ -172,7 +172,7 @@ func (l *Launcher) Stop() error {
 		return fmt.Errorf("failed to force kill server: %w", err)
 	}
 
-	os.Remove(l.Config.PIDFile)
+	_ = os.Remove(l.Config.PIDFile)
 	l.log("Server stopped (forced)")
 	return nil
 }
@@ -197,7 +197,7 @@ func (l *Launcher) Cleanup() error {
 	}
 
 	// Remove PID file
-	os.Remove(l.Config.PIDFile)
+	_ = os.Remove(l.Config.PIDFile)
 
 	l.log("Server stopped gracefully")
 	return nil
@@ -210,8 +210,9 @@ func (l *Launcher) Status() (string, error) {
 		return "Server is not running", nil
 	}
 
-	return fmt.Sprintf("Server is running (PID: %d)\nEndpoint: ws://%s:%d/ws\nHealth: ws://%s:%d/health\nModel: %s\nLogs: %s",
-		pid, l.Config.Host, l.Config.Port, l.Config.Host, l.Config.Port, l.Config.Model, l.Config.LogFile), nil
+	addr := net.JoinHostPort(l.Config.Host, strconv.Itoa(l.Config.Port))
+	return fmt.Sprintf("Server is running (PID: %d)\nEndpoint: ws://%s/ws\nHealth: ws://%s/health\nModel: %s\nLogs: %s",
+		pid, addr, addr, l.Config.Model, l.Config.LogFile), nil
 }
 
 // Logs tails the server logs
@@ -236,7 +237,9 @@ func (l *Launcher) showLastNLines(logFile string, n int) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	// Read all lines
 	var lines []string
@@ -265,7 +268,9 @@ func (l *Launcher) showLastNLines(logFile string, n int) error {
 // tailLogs follows the log file and prints new lines
 func (l *Launcher) tailLogs(logFile string) error {
 	// Show last 10 lines first
-	l.showLastNLines(logFile, 10)
+	if err := l.showLastNLines(logFile, 10); err != nil {
+		return err
+	}
 
 	fmt.Println("--- Following logs (Ctrl+C to stop) ---")
 
@@ -274,10 +279,12 @@ func (l *Launcher) tailLogs(logFile string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	// Seek to end
-	file.Seek(0, 2)
+	_, _ = file.Seek(0, 2)
 
 	scanner := bufio.NewScanner(file)
 	for {

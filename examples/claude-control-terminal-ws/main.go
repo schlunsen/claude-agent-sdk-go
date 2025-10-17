@@ -44,7 +44,9 @@ func startCommand() {
 	model := fs.String("model", "", "Claude model (default: claude-3-5-sonnet-latest)")
 	quiet := fs.Bool("quiet", false, "Suppress output")
 
-	fs.Parse(os.Args[2:])
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		log.Fatalf("Failed to parse flags: %v", err)
+	}
 
 	// Load config
 	config := DefaultConfig()
@@ -84,7 +86,9 @@ func startCommand() {
 func stopCommand() {
 	fs := flag.NewFlagSet("stop", flag.ExitOnError)
 	quiet := fs.Bool("quiet", false, "Suppress output")
-	fs.Parse(os.Args[2:])
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		log.Fatalf("Failed to parse flags: %v", err)
+	}
 
 	config := DefaultConfig()
 	launcher := NewLauncher(config, *quiet)
@@ -110,7 +114,9 @@ func logsCommand() {
 	fs := flag.NewFlagSet("logs", flag.ExitOnError)
 	follow := fs.Bool("follow", false, "Follow log output")
 	lines := fs.Int("lines", 50, "Number of lines to show")
-	fs.Parse(os.Args[2:])
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		log.Fatalf("Failed to parse flags: %v", err)
+	}
 
 	config := DefaultConfig()
 	launcher := NewLauncher(config, false)

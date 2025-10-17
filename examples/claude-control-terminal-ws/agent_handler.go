@@ -41,7 +41,9 @@ func NewAgentHandler(config *Config) *AgentHandler {
 
 // HandleWebSocket handles WebSocket connections for Claude queries
 func (h *AgentHandler) HandleWebSocket(ws *websocket.Conn) {
-	defer ws.Close()
+	defer func() {
+		_ = ws.Close()
+	}()
 
 	// Check concurrent session limit
 	h.mu.Lock()
@@ -198,10 +200,12 @@ func (h *AgentHandler) GetStats() map[string]interface{} {
 
 // HealthCheck endpoint handler
 func (h *AgentHandler) HealthCheck(ws *websocket.Conn) {
-	defer ws.Close()
+	defer func() {
+		_ = ws.Close()
+	}()
 
 	stats := h.GetStats()
 	statsJSON, _ := json.Marshal(stats)
 
-	websocket.Message.Send(ws, string(statsJSON))
+	_ = websocket.Message.Send(ws, string(statsJSON))
 }
