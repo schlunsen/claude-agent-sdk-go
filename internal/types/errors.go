@@ -1,6 +1,9 @@
 package types
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // CLINotFoundError indicates that the Claude Code CLI binary could not be found.
 // This typically occurs when the CLI is not installed or not in PATH.
@@ -311,4 +314,48 @@ func NewPermissionDeniedErrorWithReason(message string, toolName string, reason 
 // NewPermissionDeniedErrorWithCause creates a new PermissionDeniedError with the given message and cause.
 func NewPermissionDeniedErrorWithCause(message string, cause error) *PermissionDeniedError {
 	return &PermissionDeniedError{Message: message, Cause: cause}
+}
+
+// Helper functions for error checking
+
+// IsCLINotFoundError checks if an error is or wraps a CLINotFoundError.
+func IsCLINotFoundError(err error) bool {
+	var e *CLINotFoundError
+	return errors.As(err, &e)
+}
+
+// IsCLIConnectionError checks if an error is or wraps a CLIConnectionError.
+func IsCLIConnectionError(err error) bool {
+	var e *CLIConnectionError
+	return errors.As(err, &e)
+}
+
+// IsProcessError checks if an error is or wraps a ProcessError.
+func IsProcessError(err error) bool {
+	var e *ProcessError
+	return errors.As(err, &e)
+}
+
+// IsJSONDecodeError checks if an error is or wraps a JSONDecodeError.
+func IsJSONDecodeError(err error) bool {
+	var e *JSONDecodeError
+	return errors.As(err, &e)
+}
+
+// IsMessageParseError checks if an error is or wraps a MessageParseError.
+func IsMessageParseError(err error) bool {
+	var e *MessageParseError
+	return errors.As(err, &e)
+}
+
+// IsControlProtocolError checks if an error is or wraps a ControlProtocolError.
+func IsControlProtocolError(err error) bool {
+	var e *ControlProtocolError
+	return errors.As(err, &e)
+}
+
+// IsPermissionDeniedError checks if an error is or wraps a PermissionDeniedError.
+func IsPermissionDeniedError(err error) bool {
+	var e *PermissionDeniedError
+	return errors.As(err, &e)
 }
