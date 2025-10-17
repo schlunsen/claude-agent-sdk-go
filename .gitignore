@@ -39,3 +39,4 @@ examples/*/*.exe
 .env.local
 *.pprof
 GO_PORT_PLAN.md
+claude_docs/

@@ -24,7 +24,9 @@ func TestCoverageReport(t *testing.T) {
 
 	// Generate coverage profile
 	coverageFile := filepath.Join(projectRoot, "coverage.out")
-	defer os.Remove(coverageFile)
+	defer func() {
+		_ = os.Remove(coverageFile)
+	}()
 
 	cmd := exec.Command("go", "test", "-coverprofile="+coverageFile, "./...")
 	cmd.Dir = projectRoot
@@ -332,5 +334,5 @@ func TestCoverageHTML(t *testing.T) {
 	t.Logf("Open in browser: file://%s", htmlFile)
 
 	// Clean up coverage.out but keep coverage.html
-	os.Remove(coverageFile)
+	_ = os.Remove(coverageFile)
 }

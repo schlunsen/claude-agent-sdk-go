@@ -343,16 +343,14 @@ func (q *Query) handlePermissionRequest(requestData map[string]interface{}) (map
 
 	// Build permission context
 	permissionUpdates := make([]types.PermissionUpdate, 0)
-	if suggestions != nil { //nolint:gosimple
-		for _, s := range suggestions {
-			if suggestionMap, ok := s.(map[string]interface{}); ok {
-				// Parse suggestion into PermissionUpdate
-				// This is a simplified version - production code should handle all fields
-				suggestionJSON, _ := json.Marshal(suggestionMap)
-				var update types.PermissionUpdate
-				if err := json.Unmarshal(suggestionJSON, &update); err == nil {
-					permissionUpdates = append(permissionUpdates, update)
-				}
+	for _, s := range suggestions {
+		if suggestionMap, ok := s.(map[string]interface{}); ok {
+			// Parse suggestion into PermissionUpdate
+			// This is a simplified version - production code should handle all fields
+			suggestionJSON, _ := json.Marshal(suggestionMap)
+			var update types.PermissionUpdate
+			if err := json.Unmarshal(suggestionJSON, &update); err == nil {
+				permissionUpdates = append(permissionUpdates, update)
 			}
 		}
 	}
@@ -472,7 +470,7 @@ func (q *Query) handleMCPMessage(requestData map[string]interface{}) (map[string
 
 	if !exists {
 		// Return JSONRPC error response
-		messageID, _ := message["id"] //nolint:gosimple
+		messageID := message["id"]
 		return map[string]interface{}{
 			"mcp_response": map[string]interface{}{
 				"jsonrpc": "2.0",
@@ -489,7 +487,7 @@ func (q *Query) handleMCPMessage(requestData map[string]interface{}) (map[string
 	mcpResponse, err := server.HandleMessage(message)
 	if err != nil {
 		// Return JSONRPC error response
-		messageID, _ := message["id"] //nolint:gosimple
+		messageID := message["id"]
 		return map[string]interface{}{
 			"mcp_response": map[string]interface{}{
 				"jsonrpc": "2.0",

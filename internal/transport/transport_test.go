@@ -37,7 +37,7 @@ func TestFindCLI(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Failed to create mock binary: %v", err)
 				}
-				f.Close()
+				_ = f.Close()
 
 				// Make it executable
 				if err := os.Chmod(claudePath, 0755); err != nil {
@@ -45,11 +45,11 @@ func TestFindCLI(t *testing.T) {
 				}
 
 				// Add to PATH
-				os.Setenv("PATH", tmpDir+string(os.PathListSeparator)+origPath)
+				_ = os.Setenv("PATH", tmpDir+string(os.PathListSeparator)+origPath)
 
 				// Return cleanup function
 				return func() {
-					os.Setenv("PATH", origPath)
+					_ = os.Setenv("PATH", origPath)
 				}
 			},
 			wantError: false,
@@ -59,10 +59,10 @@ func TestFindCLI(t *testing.T) {
 			setup: func() func() {
 				// Save and clear PATH
 				origPath := os.Getenv("PATH")
-				os.Setenv("PATH", "")
+				_ = os.Setenv("PATH", "")
 
 				return func() {
-					os.Setenv("PATH", origPath)
+					_ = os.Setenv("PATH", origPath)
 				}
 			},
 			wantError: true,
@@ -329,7 +329,9 @@ func TestSubprocessCLITransportWrite(t *testing.T) {
 	if err := transport.Connect(ctx); err != nil {
 		t.Fatalf("Connect() unexpected error: %v", err)
 	}
-	defer transport.Close(ctx)
+	defer func() {
+		_ = transport.Close(ctx)
+	}()
 
 	// Write should succeed
 	testJSON := `{"type":"test","data":"hello"}`
@@ -377,7 +379,9 @@ func TestMessageReaderLoop(t *testing.T) {
 
 	// Write mock data in a goroutine
 	go func() {
-		defer pw.Close()
+		defer func() {
+			_ = pw.Close()
+		}()
 		_, _ = pw.Write([]byte(jsonStream))
 	}()
 
@@ -439,7 +443,9 @@ func TestSubprocessEnvironment(t *testing.T) {
 	if err := transport.Connect(ctx); err != nil {
 		t.Fatalf("Connect() unexpected error: %v", err)
 	}
-	defer transport.Close(ctx)
+	defer func() {
+		_ = transport.Close(ctx)
+	}()
 
 	// Check that environment variables were set (we can't directly verify,
 	// but we can check that Connect succeeded with the env)
@@ -527,7 +533,9 @@ func TestIntegrationSubprocessCLI(t *testing.T) {
 	if err := transport.Connect(ctx); err != nil {
 		t.Fatalf("Connect() failed: %v", err)
 	}
-	defer transport.Close(ctx)
+	defer func() {
+		_ = transport.Close(ctx)
+	}()
 
 	// Should be ready
 	if !transport.IsReady() {

@@ -86,7 +86,7 @@ done
 	}
 
 	cleanup := func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	}
 
 	return &MockCLI{
@@ -127,7 +127,7 @@ func CreateMockCLIWithMessages(t *testing.T, messages []string) (*MockCLI, error
 	}
 
 	cleanup := func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	}
 
 	return &MockCLI{
