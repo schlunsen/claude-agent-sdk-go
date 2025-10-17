@@ -343,7 +343,7 @@ func (q *Query) handlePermissionRequest(requestData map[string]interface{}) (map
 
 	// Build permission context
 	permissionUpdates := make([]types.PermissionUpdate, 0)
-	if suggestions != nil {
+	if suggestions != nil { //nolint:gosimple
 		for _, s := range suggestions {
 			if suggestionMap, ok := s.(map[string]interface{}); ok {
 				// Parse suggestion into PermissionUpdate
@@ -472,7 +472,7 @@ func (q *Query) handleMCPMessage(requestData map[string]interface{}) (map[string
 
 	if !exists {
 		// Return JSONRPC error response
-		messageID, _ := message["id"]
+		messageID, _ := message["id"] //nolint:gosimple
 		return map[string]interface{}{
 			"mcp_response": map[string]interface{}{
 				"jsonrpc": "2.0",
@@ -489,7 +489,7 @@ func (q *Query) handleMCPMessage(requestData map[string]interface{}) (map[string
 	mcpResponse, err := server.HandleMessage(message)
 	if err != nil {
 		// Return JSONRPC error response
-		messageID, _ := message["id"]
+		messageID, _ := message["id"] //nolint:gosimple
 		return map[string]interface{}{
 			"mcp_response": map[string]interface{}{
 				"jsonrpc": "2.0",
@@ -623,6 +623,7 @@ func (q *Query) AddMCPServer(name string, server types.MCPServer) {
 }
 
 // matchesToolName checks if a tool name matches a matcher pattern.
+// nolint:unused
 func matchesToolName(toolName string, pattern *string) bool {
 	if pattern == nil || *pattern == "" {
 		return true // No pattern means match all

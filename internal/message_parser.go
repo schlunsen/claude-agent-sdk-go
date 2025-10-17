@@ -151,6 +151,7 @@ func parseStreamEvent(data []byte) (*types.StreamEvent, error) {
 }
 
 // parseTextBlock parses a text block from JSON bytes.
+// nolint:unused
 func parseTextBlock(data []byte) (*types.TextBlock, error) {
 	var block types.TextBlock
 	if err := json.Unmarshal(data, &block); err != nil {
@@ -164,6 +165,7 @@ func parseTextBlock(data []byte) (*types.TextBlock, error) {
 }
 
 // parseToolUseBlock parses a tool use block from JSON bytes.
+// nolint:unused
 func parseToolUseBlock(data []byte) (*types.ToolUseBlock, error) {
 	var block types.ToolUseBlock
 	if err := json.Unmarshal(data, &block); err != nil {
@@ -177,6 +179,7 @@ func parseToolUseBlock(data []byte) (*types.ToolUseBlock, error) {
 }
 
 // parseToolResultBlock parses a tool result block from JSON bytes.
+// nolint:unused
 func parseToolResultBlock(data []byte) (*types.ToolResultBlock, error) {
 	var block types.ToolResultBlock
 	if err := json.Unmarshal(data, &block); err != nil {
@@ -190,6 +193,7 @@ func parseToolResultBlock(data []byte) (*types.ToolResultBlock, error) {
 }
 
 // parseThinkingBlock parses a thinking block from JSON bytes.
+// nolint:unused
 func parseThinkingBlock(data []byte) (*types.ThinkingBlock, error) {
 	var block types.ThinkingBlock
 	if err := json.Unmarshal(data, &block); err != nil {
