@@ -6,7 +6,7 @@ import (
 	"log"
 
 	claude "github.com/schlunsen/claude-agent-sdk-go"
-	"github.com/schlunsen/claude-agent-sdk-go/internal/types"
+	"github.com/schlunsen/claude-agent-sdk-go/types"
 )
 
 // WithHooks demonstrates the hook system for responding to lifecycle events.

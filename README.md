@@ -35,7 +35,7 @@ A Go SDK for building multi-turn AI agent applications with Claude via the Claud
 - Test code: ~2,100 lines
 - Examples: 4 working demonstrations
 - Test coverage: 60%+ across all packages
-- CI/CD: GitHub Actions (Go 1.20, 1.21, 1.22)
+- CI/CD: GitHub Actions (Go 1.24, 1.25)
 
 ## Quick Start
 
@@ -155,7 +155,7 @@ func main() {
 
 ## Requirements
 
-- **Go 1.20+** (for improved error handling with `errors.Is()`)
+- **Go 1.24+**
 - **Claude Code CLI** installed globally:
   ```bash
   npm install -g @anthropic-ai/claude-code
@@ -323,14 +323,14 @@ The SDK provides typed errors for better handling:
 
 ```go
 import "errors"
-import "github.com/schlunsen/claude-agent-sdk-go/internal/types"
+import "github.com/schlunsen/claude-agent-sdk-go/types"
 
 messages, err := Query(ctx, "...", nil)
 if err != nil {
 	switch {
-	case errors.Is(err, types.ErrCLINotFound):
+	case types.IsCLINotFoundError(err):
 		fmt.Println("Claude Code CLI not installed")
-	case errors.Is(err, types.ErrCLIConnection):
+	case types.IsCLIConnectionError(err):
 		fmt.Println("Failed to connect to CLI")
 	default:
 		fmt.Printf("Error: %v\n", err)
@@ -386,7 +386,7 @@ See `examples/` directory for complete, runnable examples:
 ### Prerequisites
 
 ```bash
-go 1.20+
+go 1.24+
 ```
 
 ### Build
@@ -474,4 +474,4 @@ For issues with:
 
 ---
 
-**Status**: 🚧 In Development | **Go Version**: 1.20+ | **Last Updated**: October 2024
+**Status**: 🚧 In Development | **Go Version**: 1.24+ | **Last Updated**: October 2024

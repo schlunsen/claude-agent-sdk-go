@@ -6,7 +6,7 @@ import (
 	"log"
 
 	claude "github.com/schlunsen/claude-agent-sdk-go"
-	"github.com/schlunsen/claude-agent-sdk-go/internal/types"
+	"github.com/schlunsen/claude-agent-sdk-go/types"
 )
 
 // SimpleQuery demonstrates the one-shot Query function.
