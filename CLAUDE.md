@@ -3,7 +3,7 @@
 ## Quick Start
 
 ### Prerequisites
-- Go 1.20+
+- Go 1.24+
 - Claude Code CLI installed: `npm install -g @anthropic-ai/claude-code`
 - Valid `CLAUDE_API_KEY` environment variable
 
@@ -520,7 +520,7 @@ Core dependencies (none for now - using Go stdlib):
 - `os` and `os/exec` (stdlib)
 - `io` and `bufio` (stdlib)
 - `context` (stdlib)
-- `errors` (stdlib, Go 1.20+)
+- `errors` (stdlib, Go 1.24+)
 
 Keep it stdlib-only to avoid bloating the SDK with dependencies.
 
@@ -566,4 +566,4 @@ gofmt -w ./internal/
 
 ---
 
-**Status**: 🚧 In Development | **Go Version**: 1.20+ | **Last Updated**: October 2024
+**Status**: 🚧 In Development | **Go Version**: 1.24+ | **Last Updated**: October 2024
