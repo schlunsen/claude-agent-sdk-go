@@ -378,7 +378,7 @@ func TestMessageReaderLoop(t *testing.T) {
 	// Write mock data in a goroutine
 	go func() {
 		defer pw.Close()
-		pw.Write([]byte(jsonStream))
+		_, _ = pw.Write([]byte(jsonStream))
 	}()
 
 	// Create transport with custom stdout

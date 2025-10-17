@@ -26,6 +26,7 @@ var (
 		"parent_tool_use_id": "parent_456"
 	}`)
 
+	//nolint:unused
 	userMessageWithToolResult = []byte(`{
 		"type": "user",
 		"content": [
@@ -326,6 +327,7 @@ var (
 		`{"type": "tool_use", "id": "tool_3", "name": "test", "input": {}}`,
 	}
 
+	//nolint:unused
 	emptyContentBlocks = []string{}
 
 	// User message variants for comprehensive testing
