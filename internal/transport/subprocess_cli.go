@@ -295,6 +295,7 @@ func (t *SubprocessCLITransport) GetError() error {
 
 // readStderr reads stderr output in a goroutine for debugging.
 // This is a helper function for monitoring subprocess errors.
+// nolint:unused
 func (t *SubprocessCLITransport) readStderr(ctx context.Context) {
 	if t.stderr == nil {
 		return

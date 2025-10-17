@@ -135,7 +135,11 @@ func TestInitialize(t *testing.T) {
 	if err := query.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer query.Stop(ctx)
+	defer func() {
+		if err := query.Stop(ctx); err != nil {
+			t.Logf("error stopping query: %v", err)
+		}
+	}()
 
 	// Start goroutine to respond to initialize request
 	go func() {
@@ -219,7 +223,11 @@ func TestErrorResponse(t *testing.T) {
 	if err := query.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer query.Stop(ctx)
+	defer func() {
+		if err := query.Stop(ctx); err != nil {
+			t.Logf("error stopping query: %v", err)
+		}
+	}()
 
 	// Send a control request
 	responseChan := make(chan error, 1)
@@ -545,7 +553,11 @@ func TestRequestResponseCorrelation(t *testing.T) {
 	if err := query.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer query.Stop(ctx)
+	defer func() {
+		if err := query.Stop(ctx); err != nil {
+			t.Logf("error stopping query: %v", err)
+		}
+	}()
 
 	// Send a control request in a goroutine
 	responseChan := make(chan map[string]interface{}, 1)
@@ -624,7 +636,11 @@ func TestMessageRouting(t *testing.T) {
 	if err := query.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer query.Stop(ctx)
+	defer func() {
+		if err := query.Stop(ctx); err != nil {
+			t.Logf("error stopping query: %v", err)
+		}
+	}()
 
 	// Send a normal message
 	userMsg := &types.UserMessage{
@@ -658,7 +674,11 @@ func TestControlMessageFiltering(t *testing.T) {
 	if err := query.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer query.Stop(ctx)
+	defer func() {
+		if err := query.Stop(ctx); err != nil {
+			t.Logf("error stopping query: %v", err)
+		}
+	}()
 
 	// Send a control request
 	controlRequest := &types.SystemMessage{
@@ -706,7 +726,11 @@ func TestConcurrentRequests(t *testing.T) {
 	if err := query.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer query.Stop(ctx)
+	defer func() {
+		if err := query.Stop(ctx); err != nil {
+			t.Logf("error stopping query: %v", err)
+		}
+	}()
 
 	// Start a goroutine to respond to all control requests
 	go func() {
