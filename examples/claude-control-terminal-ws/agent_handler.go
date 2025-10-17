@@ -143,10 +143,10 @@ func (h *AgentHandler) sendMessage(ws *websocket.Conn, msg types.Message) error 
 	case "result":
 		if resultMsg, ok := msg.(*types.ResultMessage); ok {
 			content := map[string]interface{}{
-				"success":      true,
-				"num_turns":    resultMsg.NumTurns,
-				"duration_ms":  resultMsg.DurationMs,
-				"is_error":     resultMsg.IsError,
+				"success":     true,
+				"num_turns":   resultMsg.NumTurns,
+				"duration_ms": resultMsg.DurationMs,
+				"is_error":    resultMsg.IsError,
 			}
 			if resultMsg.TotalCostUSD != nil {
 				content["cost_usd"] = *resultMsg.TotalCostUSD
