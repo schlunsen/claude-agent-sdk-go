@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	claude "github.com/schlunsen/claude-agent-sdk-go"
-	"github.com/schlunsen/claude-agent-sdk-go/internal/types"
+	"github.com/schlunsen/claude-agent-sdk-go/types"
 	"golang.org/x/net/websocket"
 )
 

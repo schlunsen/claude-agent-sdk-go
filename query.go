@@ -7,7 +7,7 @@ import (
 
 	"github.com/schlunsen/claude-agent-sdk-go/internal"
 	"github.com/schlunsen/claude-agent-sdk-go/internal/transport"
-	"github.com/schlunsen/claude-agent-sdk-go/internal/types"
+	"github.com/schlunsen/claude-agent-sdk-go/types"
 )
 
 // Query executes a single Claude query in non-streaming mode and returns a channel of messages.

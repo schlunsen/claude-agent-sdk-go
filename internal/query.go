@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/schlunsen/claude-agent-sdk-go/internal/transport"
-	"github.com/schlunsen/claude-agent-sdk-go/internal/types"
+	"github.com/schlunsen/claude-agent-sdk-go/types"
 )
 
 // Query manages bidirectional control message handling.

@@ -8,7 +8,7 @@ import (
 
 	"github.com/schlunsen/claude-agent-sdk-go/internal"
 	"github.com/schlunsen/claude-agent-sdk-go/internal/transport"
-	"github.com/schlunsen/claude-agent-sdk-go/internal/types"
+	"github.com/schlunsen/claude-agent-sdk-go/types"
 )
 
 // Client provides bidirectional communication with Claude Code CLI for interactive sessions.

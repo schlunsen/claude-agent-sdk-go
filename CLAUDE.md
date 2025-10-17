@@ -43,12 +43,16 @@ claude-agent-sdk-go/
 ├── Makefile                     # Build targets
 ├── LICENSE                      # MIT License
 ├── .gitignore                   # Git ignore rules
+├── types/                       # Public type definitions (exported)
+│   ├── messages.go              # Message types and content blocks
+│   ├── messages_test.go         # Message type tests
+│   ├── control.go               # Control protocol types
+│   ├── control_test.go          # Control protocol tests
+│   ├── options.go               # ClaudeAgentOptions builder
+│   ├── errors.go                # Error definitions
+│   ├── errors_test.go           # Error tests
+│   └── doc.go                   # Package documentation
 ├── internal/                    # Private packages (not exported)
-│   ├── types/                   # Type definitions
-│   │   ├── messages.go          # Message types
-│   │   ├── control.go           # Control protocol types
-│   │   ├── options.go           # ClaudeAgentOptions
-│   │   └── errors.go            # Error definitions
 │   ├── transport/               # Transport abstraction
 │   │   ├── transport.go         # Transport interface
 │   │   └── subprocess_cli.go    # CLI subprocess implementation
@@ -57,7 +61,7 @@ claude-agent-sdk-go/
 │   └── client.go                # Internal client orchestration
 ├── client.go                    # Public Client type
 ├── query.go                     # Public Query function
-├── options.go                   # Public Options type
+├── doc.go                       # Package documentation
 ├── examples/                    # Runnable examples
 │   ├── simple_query/main.go
 │   ├── interactive_client/main.go
@@ -378,7 +382,7 @@ type Query struct {
 go test ./...
 
 # Run specific package
-go test -v ./internal/types/...
+go test -v ./types/...
 
 # Run with coverage
 go test -cover ./...
@@ -392,7 +396,7 @@ go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
 Place tests next to the code they test:
 
 ```
-internal/types/
+types/
 ├── errors.go
 ├── errors_test.go        # Tests for errors.go
 ├── messages.go
@@ -403,16 +407,16 @@ internal/types/
 
 ### Add a New Message Type
 
-1. Define struct in `internal/types/messages.go`
+1. Define struct in `types/messages.go`
 2. Add JSON tags for marshaling
-3. Add tests in `tests/message_parser_test.go` or appropriate `*_test.go` file
+3. Add tests in `types/messages_test.go` or appropriate `*_test.go` file
 4. Update docs if user-facing
 
 ### Add a New Hook
 
-1. Define hook type in `internal/types/control.go`
+1. Define hook type in `types/control.go`
 2. Implement routing in `internal/query.go`
-3. Add to options builder in `options.go`
+3. Add to options builder in `types/options.go`
 4. Test with integration test
 
 ### Add a New Example
@@ -441,7 +445,7 @@ go install github.com/go-delve/delve/cmd/dlv@latest
 
 Run tests with debugger:
 ```bash
-dlv test ./internal/types -- -test.run TestName
+dlv test ./types -- -test.run TestName
 ```
 
 ### Inspect Subprocess Communication
@@ -494,7 +498,7 @@ git checkout -b phase-1/error-types
 git status
 
 # Stage changes
-git add internal/types/
+git add types/
 
 # Commit
 git commit -m "Phase 1: Add error types"

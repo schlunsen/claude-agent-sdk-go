@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/schlunsen/claude-agent-sdk-go/internal/types"
+	"github.com/schlunsen/claude-agent-sdk-go/types"
 )
 
 // TestParseMessage_UserMessage tests parsing of user messages.

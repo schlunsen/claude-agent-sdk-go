@@ -323,14 +323,14 @@ The SDK provides typed errors for better handling:
 
 ```go
 import "errors"
-import "github.com/schlunsen/claude-agent-sdk-go/internal/types"
+import "github.com/schlunsen/claude-agent-sdk-go/types"
 
 messages, err := Query(ctx, "...", nil)
 if err != nil {
 	switch {
-	case errors.Is(err, types.ErrCLINotFound):
+	case types.IsCLINotFoundError(err):
 		fmt.Println("Claude Code CLI not installed")
-	case errors.Is(err, types.ErrCLIConnection):
+	case types.IsCLIConnectionError(err):
 		fmt.Println("Failed to connect to CLI")
 	default:
 		fmt.Printf("Error: %v\n", err)

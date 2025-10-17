@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	claude "github.com/schlunsen/claude-agent-sdk-go"
-	"github.com/schlunsen/claude-agent-sdk-go/internal/types"
+	"github.com/schlunsen/claude-agent-sdk-go/types"
 )
 
 // InteractiveClient demonstrates the interactive Client for multi-turn conversations.
