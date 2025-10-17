@@ -1,16 +1,19 @@
-.PHONY: help build test fmt lint clean coverage
+.PHONY: help build test test-short test-integration bench fmt lint clean coverage
 
 help:
 	@echo "Claude Agent SDK for Go - Development Tasks"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  make build       - Build the SDK"
-	@echo "  make test        - Run all tests"
-	@echo "  make fmt         - Format code with gofmt"
-	@echo "  make lint        - Run go vet and golangci-lint"
-	@echo "  make coverage    - Run tests with coverage report"
-	@echo "  make clean       - Clean build artifacts"
-	@echo "  make examples    - Build all examples"
+	@echo "  make build           - Build the SDK"
+	@echo "  make test            - Run all tests"
+	@echo "  make test-short      - Run tests in short mode (skip integration)"
+	@echo "  make test-integration - Run integration tests only"
+	@echo "  make bench           - Run benchmarks"
+	@echo "  make fmt             - Format code with gofmt"
+	@echo "  make lint            - Run go vet and golangci-lint"
+	@echo "  make coverage        - Run tests with coverage report"
+	@echo "  make clean           - Clean build artifacts"
+	@echo "  make examples        - Build all examples"
 	@echo ""
 
 build:
@@ -19,8 +22,20 @@ build:
 	@echo "Build complete"
 
 test:
-	@echo "Running tests..."
+	@echo "Running all tests..."
 	go test -v ./...
+
+test-short:
+	@echo "Running tests in short mode..."
+	go test -short -v ./...
+
+test-integration:
+	@echo "Running integration tests..."
+	go test -v ./tests/...
+
+bench:
+	@echo "Running benchmarks..."
+	go test -bench=. -benchmem ./tests/...
 
 fmt:
 	@echo "Formatting code..."
