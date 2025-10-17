@@ -200,7 +200,10 @@ func BenchmarkClient_Connect(b *testing.B) {
 			continue
 		}
 
-		client.Connect(ctx)
+		if err := client.Connect(ctx); err != nil {
+			client.Close(ctx)
+			continue
+		}
 		client.Close(ctx)
 	}
 }
