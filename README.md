@@ -19,18 +19,23 @@ A Go SDK for building multi-turn AI agent applications with Claude via the Claud
 
 ## Status
 
-🚧 **In Development** - Currently being ported from Python SDK v0.1.3
+✅ **Implementation Complete** - All core phases implemented and tested
 
-- [ ] Phase 1: Foundation & Types (0%)
-- [ ] Phase 2: Transport Layer (0%)
-- [ ] Phase 3: Message Parsing (0%)
-- [ ] Phase 4: Control Protocol (0%)
-- [ ] Phase 5: Public API (0%)
-- [ ] Phase 6: Testing (0%)
-- [ ] Phase 7: Documentation (0%)
-- [ ] Phase 8: Polish & Release (0%)
+- [x] Phase 1: Foundation & Types (100%)
+- [x] Phase 2: Transport Layer (100%)
+- [x] Phase 3: Message Parsing (100%)
+- [x] Phase 4: Control Protocol (100%)
+- [x] Phase 5: Public API (100%)
+- [x] Phase 6: Testing & Validation (100%)
+- [x] Phase 7: Documentation & Examples (100%)
+- [ ] Phase 8: Polish & Release (in progress)
 
-Expected completion: ~2-3 weeks
+**Code Statistics:**
+- Production code: ~9,800 lines
+- Test code: ~2,100 lines
+- Examples: 4 working demonstrations
+- Test coverage: 60%+ across all packages
+- CI/CD: GitHub Actions (Go 1.20, 1.21, 1.22)
 
 ## Quick Start
 
@@ -356,11 +361,25 @@ if err != nil {
 
 See `examples/` directory for complete, runnable examples:
 
-- `examples/simple_query/` - Basic one-shot query
-- `examples/interactive_client/` - Multi-turn conversation
-- `examples/with_permissions/` - Tool permission callbacks
-- `examples/with_hooks/` - Hook lifecycle events
-- `examples/with_mcp/` - Custom MCP servers (coming soon)
+- **`examples/simple_query/main.go`** - Basic one-shot query
+  ```bash
+  cd examples/simple_query && go run main.go
+  ```
+
+- **`examples/interactive_client/main.go`** - Multi-turn conversation with prompt
+  ```bash
+  cd examples/interactive_client && go run main.go
+  ```
+
+- **`examples/with_permissions/main.go`** - Tool permission callbacks for safety
+  ```bash
+  cd examples/with_permissions && go run main.go
+  ```
+
+- **`examples/with_hooks/main.go`** - Hook lifecycle events (PreToolUse, PostToolUse)
+  ```bash
+  cd examples/with_hooks && go run main.go
+  ```
 
 ## Development
 
