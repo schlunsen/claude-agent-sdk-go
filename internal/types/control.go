@@ -267,3 +267,17 @@ type SDKControlResponse struct {
 	Type     string          `json:"type"`     // "control_response"
 	Response json.RawMessage `json:"response"` // Union type - needs custom unmarshaling
 }
+
+// MCPServer represents an MCP server interface for handling MCP messages.
+// This is a minimal interface for routing MCP JSONRPC messages.
+// Concrete implementations can use the MCP SDK or custom logic.
+type MCPServer interface {
+	// HandleMessage handles an incoming JSONRPC message and returns the response.
+	HandleMessage(message map[string]interface{}) (map[string]interface{}, error)
+
+	// Name returns the server name.
+	Name() string
+
+	// Version returns the server version.
+	Version() string
+}
