@@ -150,7 +150,8 @@ func (m *UserMessage) isMessage() {}
 func (m *UserMessage) UnmarshalJSON(data []byte) error {
 	type Alias UserMessage
 	aux := &struct {
-		Content json.RawMessage `json:"content"`
+		Content json.RawMessage            `json:"content"`
+		Message map[string]json.RawMessage `json:"message"` // Handle nested message format from CLI
 		*Alias
 	}{
 		Alias: (*Alias)(m),
@@ -160,16 +161,42 @@ func (m *UserMessage) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	var contentRaw json.RawMessage
+
+	// Check if content is in nested message.content (Claude CLI format)
+	if aux.Message != nil {
+		if content, ok := aux.Message["content"]; ok {
+			contentRaw = content
+		}
+		// Also extract parent_tool_use_id from nested message if present
+		if parentToolUseID, ok := aux.Message["parent_tool_use_id"]; ok {
+			var id string
+			if err := json.Unmarshal(parentToolUseID, &id); err == nil {
+				m.ParentToolUseID = &id
+			}
+		}
+	}
+
+	// Fall back to top-level content if nested not found
+	if contentRaw == nil && aux.Content != nil {
+		contentRaw = aux.Content
+	}
+
+	// If we still don't have content, that's an error
+	if contentRaw == nil {
+		return fmt.Errorf("missing content field")
+	}
+
 	// Try to unmarshal as string first
 	var contentStr string
-	if err := json.Unmarshal(aux.Content, &contentStr); err == nil {
+	if err := json.Unmarshal(contentRaw, &contentStr); err == nil {
 		m.Content = contentStr
 		return nil
 	}
 
 	// Try to unmarshal as array of content blocks
 	var contentArr []json.RawMessage
-	if err := json.Unmarshal(aux.Content, &contentArr); err == nil {
+	if err := json.Unmarshal(contentRaw, &contentArr); err == nil {
 		blocks := make([]ContentBlock, len(contentArr))
 		for i, rawBlock := range contentArr {
 			block, err := UnmarshalContentBlock(rawBlock)
