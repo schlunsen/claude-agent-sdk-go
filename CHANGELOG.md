@@ -127,6 +127,10 @@ None - this is the first release.
   - Changed from `agent --stdio` to `--print --input-format=stream-json --output-format=stream-json --verbose`
   - Updated query message structure to match Python SDK format with nested message object
   - Added `parent_tool_use_id` and `session_id` fields to protocol messages
+- Added support for nested message format in AssistantMessage parsing
+  - Handle nested `message.content` format from Claude CLI responses
+  - Extract model field from nested message structure
+  - Fall back to top-level content for backward compatibility
 
 ### Security
 - All tool usage controlled via permission callbacks
