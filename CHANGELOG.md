@@ -2,7 +2,7 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
-## [0.1.0] - 2025-10-17
+## [0.1.0] - 2025-10-18
 
 ### Initial Release - Complete Port from Python SDK
 
@@ -123,7 +123,10 @@ This is the first stable release of the Claude Agent SDK for Go, porting all cor
 None - this is the first release.
 
 ### Bug Fixes
-None - this is the first release.
+- Fixed CLI invocation command flags to use correct protocol format (#9)
+  - Changed from `agent --stdio` to `--print --input-format=stream-json --output-format=stream-json --verbose`
+  - Updated query message structure to match Python SDK format with nested message object
+  - Added `parent_tool_use_id` and `session_id` fields to protocol messages
 
 ### Security
 - All tool usage controlled via permission callbacks
