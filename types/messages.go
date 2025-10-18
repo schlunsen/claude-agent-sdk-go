@@ -187,7 +187,8 @@ func (m *AssistantMessage) isMessage() {}
 func (m *AssistantMessage) UnmarshalJSON(data []byte) error {
 	type Alias AssistantMessage
 	aux := &struct {
-		Content []json.RawMessage `json:"content"`
+		Content []json.RawMessage          `json:"content"`
+		Message map[string]json.RawMessage `json:"message"` // Handle nested message format from CLI
 		*Alias
 	}{
 		Alias: (*Alias)(m),
@@ -197,9 +198,33 @@ func (m *AssistantMessage) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	var contentBlocks []json.RawMessage
+
+	// Check if content is in nested message.content (Claude CLI format)
+	if aux.Message != nil {
+		if contentRaw, ok := aux.Message["content"]; ok {
+			var nested []json.RawMessage
+			if err := json.Unmarshal(contentRaw, &nested); err == nil {
+				contentBlocks = nested
+			}
+		}
+		// Also extract model from nested message if present
+		if modelRaw, ok := aux.Message["model"]; ok {
+			var model string
+			if err := json.Unmarshal(modelRaw, &model); err == nil {
+				m.Model = model
+			}
+		}
+	}
+
+	// Fall back to top-level content if nested not found
+	if contentBlocks == nil && aux.Content != nil {
+		contentBlocks = aux.Content
+	}
+
 	// Unmarshal content blocks
-	m.Content = make([]ContentBlock, len(aux.Content))
-	for i, rawBlock := range aux.Content {
+	m.Content = make([]ContentBlock, len(contentBlocks))
+	for i, rawBlock := range contentBlocks {
 		block, err := UnmarshalContentBlock(rawBlock)
 		if err != nil {
 			return err
