@@ -117,10 +117,15 @@ func Query(ctx context.Context, prompt string, options *types.ClaudeAgentOptions
 	}
 
 	// Build the query message to send to CLI
-	// For non-streaming mode, we send a single message with the prompt
+	// Format matches Python SDK: type, message{role,content}, parent_tool_use_id, session_id
 	queryMsg := map[string]interface{}{
-		"type":    "user",
-		"content": prompt,
+		"type": "user",
+		"message": map[string]interface{}{
+			"role":    "user",
+			"content": prompt,
+		},
+		"parent_tool_use_id": nil,
+		"session_id":         "default-session",
 	}
 
 	// Marshal and send
