@@ -69,8 +69,12 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 	// Create cancellable context
 	t.ctx, t.cancel = context.WithCancel(ctx)
 
-	// Build command: claude agent --stdio
-	t.cmd = exec.CommandContext(t.ctx, t.cliPath, "agent", "--stdio")
+	// Build command: claude --print --input-format=stream-json --output-format=stream-json --verbose
+	t.cmd = exec.CommandContext(t.ctx, t.cliPath,
+		"--print",
+		"--input-format=stream-json",
+		"--output-format=stream-json",
+		"--verbose")
 
 	// Set working directory if provided
 	if t.cwd != "" {
