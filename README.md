@@ -403,8 +403,17 @@ make build
 ### Run Tests
 
 ```bash
+# Run unit tests only (recommended for development)
 make test
+
+# Run ALL tests including integration tests (spawns Claude processes)
+make test-all
+
+# Run only integration tests (requires CLAUDE_API_KEY)
+make test-integration
 ```
+
+**Note:** By default, `make test` runs in short mode and skips integration tests to avoid spawning Claude CLI processes. Use `make test-all` only when you explicitly want to test against the real Claude CLI.
 
 ### Lint & Format
 

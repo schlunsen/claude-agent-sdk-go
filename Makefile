@@ -1,13 +1,13 @@
-.PHONY: help build test test-short test-integration bench fmt lint clean coverage
+.PHONY: help build test test-all test-integration bench fmt lint clean coverage
 
 help:
 	@echo "Claude Agent SDK for Go - Development Tasks"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  make build           - Build the SDK"
-	@echo "  make test            - Run all tests"
-	@echo "  make test-short      - Run tests in short mode (skip integration)"
-	@echo "  make test-integration - Run integration tests only"
+	@echo "  make test            - Run unit tests (default, fast)"
+	@echo "  make test-all        - Run ALL tests including integration (spawns Claude processes)"
+	@echo "  make test-integration - Run integration tests only (requires CLAUDE_API_KEY)"
 	@echo "  make bench           - Run benchmarks"
 	@echo "  make fmt             - Format code with gofmt"
 	@echo "  make lint            - Run go vet and golangci-lint"
@@ -22,12 +22,14 @@ build:
 	@echo "Build complete"
 
 test:
-	@echo "Running all tests..."
-	go test -v ./...
-
-test-short:
-	@echo "Running tests in short mode..."
+	@echo "Running unit tests (short mode)..."
+	@echo "Note: Integration tests skipped. Use 'make test-all' to run all tests."
 	go test -short -v ./...
+
+test-all:
+	@echo "Running ALL tests (including integration tests)..."
+	@echo "WARNING: This will spawn Claude CLI processes if CLAUDE_API_KEY is set"
+	go test -v ./...
 
 test-integration:
 	@echo "Running integration tests..."
@@ -48,10 +50,11 @@ lint:
 	@if command -v golangci-lint > /dev/null; then golangci-lint run ./...; else echo "golangci-lint not installed, skipping"; fi
 
 coverage:
-	@echo "Running tests with coverage..."
-	go test -v -coverprofile=coverage.out ./...
+	@echo "Running tests with coverage (short mode)..."
+	go test -short -v -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
+	@echo "Note: Integration tests skipped. Use 'go test -coverprofile=coverage.out ./...' for full coverage."
 
 clean:
 	@echo "Cleaning build artifacts..."
