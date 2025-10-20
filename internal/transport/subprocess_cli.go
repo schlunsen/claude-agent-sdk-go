@@ -109,11 +109,20 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 		}
 	}
 
+	// Add model if specified
+	if t.options != nil && t.options.Model != nil {
+		args = append(args, "--model", *t.options.Model)
+		t.logger.Debug("Setting model: %s", *t.options.Model)
+	}
+
 	// Add --resume flag if resuming a conversation
 	if t.resumeSessionID != "" {
 		args = append(args, "--resume", t.resumeSessionID)
 		t.logger.Debug("Resuming Claude CLI conversation with session ID: %s", t.resumeSessionID)
 	}
+
+	// Log the full command for debugging
+	t.logger.Debug("Claude CLI command: %s %v", t.cliPath, args)
 
 	// Create command with arguments
 	t.cmd = exec.CommandContext(t.ctx, t.cliPath, args...)
@@ -131,9 +140,28 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 	t.cmd.Env = append(t.cmd.Env, "CLAUDE_CODE_ENTRYPOINT=agent")
 	t.cmd.Env = append(t.cmd.Env, fmt.Sprintf("CLAUDE_AGENT_SDK_VERSION=%s", SDKVersion))
 
-	// Add custom environment variables
+	// Add model environment variable if specified in options (ANTHROPIC_MODEL)
+	// This is critical - both CLI flag and env var should be set for maximum compatibility
+	if t.options != nil && t.options.Model != nil {
+		t.cmd.Env = append(t.cmd.Env, fmt.Sprintf("ANTHROPIC_MODEL=%s", *t.options.Model))
+		t.logger.Debug("Setting ANTHROPIC_MODEL environment variable: %s", *t.options.Model)
+	} else {
+		t.logger.Debug("ANTHROPIC_MODEL not set (using CLI default)")
+	}
+
+	// Add base URL environment variable if specified in options (ANTHROPIC_BASE_URL)
+	// If not set, Claude CLI will use default Anthropic API endpoint
+	if t.options != nil && t.options.BaseURL != nil {
+		t.cmd.Env = append(t.cmd.Env, fmt.Sprintf("ANTHROPIC_BASE_URL=%s", *t.options.BaseURL))
+		t.logger.Debug("Setting ANTHROPIC_BASE_URL environment variable: %s", *t.options.BaseURL)
+	} else {
+		t.logger.Debug("ANTHROPIC_BASE_URL not set (using default Anthropic API)")
+	}
+
+	// Add custom environment variables (these can override the above if needed)
 	for key, value := range t.env {
 		t.cmd.Env = append(t.cmd.Env, fmt.Sprintf("%s=%s", key, value))
+		t.logger.Debug("Setting custom environment variable: %s=%s", key, value)
 	}
 
 	// Set up pipes

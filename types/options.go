@@ -99,6 +99,9 @@ type ClaudeAgentOptions struct {
 	Model    *string `json:"model,omitempty"`
 	MaxTurns *int    `json:"max_turns,omitempty"`
 
+	// API configuration
+	BaseURL *string `json:"base_url,omitempty"` // Custom Anthropic API base URL (ANTHROPIC_BASE_URL)
+
 	// Working directory and CLI path
 	CWD     *string `json:"cwd,omitempty"`
 	CLIPath *string `json:"cli_path,omitempty"`
@@ -221,6 +224,12 @@ func (o *ClaudeAgentOptions) WithModel(model string) *ClaudeAgentOptions {
 // WithMaxTurns sets the maximum number of turns.
 func (o *ClaudeAgentOptions) WithMaxTurns(maxTurns int) *ClaudeAgentOptions {
 	o.MaxTurns = &maxTurns
+	return o
+}
+
+// WithBaseURL sets the custom Anthropic API base URL.
+func (o *ClaudeAgentOptions) WithBaseURL(baseURL string) *ClaudeAgentOptions {
+	o.BaseURL = &baseURL
 	return o
 }
 
