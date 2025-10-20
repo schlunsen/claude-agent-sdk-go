@@ -283,6 +283,77 @@ func (c *Client) Query(ctx context.Context, prompt string) error {
 	return nil
 }
 
+// QueryWithContent sends a structured content query (text + images) to Claude.
+//
+// This method allows sending messages with mixed content types (text and images),
+// following the Claude API's content block format. Unlike Query() which only accepts
+// plain text, this method accepts an array of content blocks.
+//
+// Content blocks can be:
+//   - Text blocks: map[string]interface{}{"type": "text", "text": "..."}
+//   - Image blocks: map[string]interface{}{"type": "image", "source": {...}}
+//
+// Example usage:
+//
+//	content := []interface{}{
+//	    map[string]interface{}{
+//	        "type": "text",
+//	        "text": "What's in this image?",
+//	    },
+//	    map[string]interface{}{
+//	        "type": "image",
+//	        "source": map[string]interface{}{
+//	            "type":       "base64",
+//	            "media_type": "image/png",
+//	            "data":       "iVBORw0KG...",
+//	        },
+//	    },
+//	}
+//
+//	if err := client.QueryWithContent(ctx, content); err != nil {
+//	    log.Fatal(err)
+//	}
+//
+//	for msg := range client.ReceiveResponse(ctx) {
+//	    // Process messages
+//	}
+func (c *Client) QueryWithContent(ctx context.Context, content interface{}) error {
+	c.mu.Lock()
+	if !c.connected {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	c.mu.Unlock()
+
+	// Validate content
+	if content == nil {
+		return fmt.Errorf("content cannot be nil")
+	}
+
+	// Build query message with structured content
+	queryMsg := map[string]interface{}{
+		"type": "user",
+		"message": map[string]interface{}{
+			"role":    "user",
+			"content": content, // This can be a string or []ContentBlock
+		},
+		"parent_tool_use_id": nil,
+		"session_id":         "default",
+	}
+
+	// Marshal and send
+	data, err := json.Marshal(queryMsg)
+	if err != nil {
+		return types.NewControlProtocolErrorWithCause("failed to marshal query", err)
+	}
+
+	if err := c.transport.Write(ctx, string(data)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ReceiveResponse returns a channel of response messages from Claude.
 //
 // This should be called after Query() to receive the response. The channel will
