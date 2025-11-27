@@ -38,14 +38,16 @@ func main() {
 	defer cancel()
 
 	// Execute query with plugin support
-	fmt.Println("=== Asking Claude to use the demo plugin ===\n")
+	fmt.Println("=== Asking Claude to use the demo plugin ===")
+	fmt.Println()
 	messages, err := sdk.Query(ctx, "Please use the /greet command from the demo plugin", options)
 	if err != nil {
 		log.Fatalf("Query failed: %v", err)
 	}
 
 	// Stream messages
-	fmt.Println("=== Claude Response ===\n")
+	fmt.Println("=== Claude Response ===")
+	fmt.Println()
 	for msg := range messages {
 		switch m := msg.(type) {
 		case *types.UserMessage:
