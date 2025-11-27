@@ -1,0 +1,8 @@
+{
+  "name": "demo-plugin",
+  "version": "1.0.0",
+  "description": "A demo plugin for testing Go SDK plugin support",
+  "commands": {
+    "greet": "commands/greet.md"
+  }
+}
