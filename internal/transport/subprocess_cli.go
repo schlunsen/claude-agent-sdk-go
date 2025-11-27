@@ -285,13 +285,28 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting permission mode: %s", string(*t.options.PermissionMode))
 	}
 
-	// Add system prompt if specified
-	if t.options != nil && t.options.SystemPrompt != nil {
-		// SystemPrompt can be either a string or a preset
-		if promptStr, ok := t.options.SystemPrompt.(string); ok {
+	// Add system prompt - always pass the flag to match Python SDK behavior
+	// When nil, pass empty string to prevent unintended Claude Code defaults
+	if t.options != nil {
+		if t.options.SystemPrompt == nil {
+			// Default to empty system prompt when not specified
+			args = append(args, "--system-prompt", "")
+			t.logger.Debug("Setting empty system prompt (default)")
+		} else if promptStr, ok := t.options.SystemPrompt.(string); ok {
+			// Handle string prompt
 			args = append(args, "--system-prompt", promptStr)
 			t.logger.Debug("Setting system prompt: %s", promptStr)
+		} else if preset, ok := t.options.SystemPrompt.(types.SystemPromptPreset); ok {
+			// Handle preset case - append to default Claude Code prompt
+			if preset.Append != nil {
+				args = append(args, "--append-system-prompt", *preset.Append)
+				t.logger.Debug("Appending to system prompt preset: %s", *preset.Append)
+			}
 		}
+	} else {
+		// No options provided, use empty system prompt
+		args = append(args, "--system-prompt", "")
+		t.logger.Debug("Setting empty system prompt (no options)")
 	}
 
 	// Add model if specified

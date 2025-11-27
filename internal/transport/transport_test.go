@@ -755,3 +755,171 @@ func contains(slice []string, str string) bool {
 	}
 	return false
 }
+
+// TestBuildCommandArgs_SystemPrompt tests system prompt handling to match Python SDK behavior
+func TestBuildCommandArgs_SystemPrompt(t *testing.T) {
+	tests := []struct {
+		name         string
+		systemPrompt interface{}
+		wantFlag     bool
+		wantValue    string
+		wantAppend   bool // For preset case
+	}{
+		{
+			name:         "nil system prompt should pass empty string",
+			systemPrompt: nil,
+			wantFlag:     true,
+			wantValue:    "",
+		},
+		{
+			name:         "empty string system prompt",
+			systemPrompt: "",
+			wantFlag:     true,
+			wantValue:    "",
+		},
+		{
+			name:         "custom system prompt",
+			systemPrompt: "You are a helpful assistant",
+			wantFlag:     true,
+			wantValue:    "You are a helpful assistant",
+		},
+		{
+			name:         "multiline system prompt",
+			systemPrompt: "You are a helpful assistant.\nAlways be polite.",
+			wantFlag:     true,
+			wantValue:    "You are a helpful assistant.\nAlways be polite.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := types.NewClaudeAgentOptions()
+			if tt.systemPrompt != nil {
+				opts.WithSystemPrompt(tt.systemPrompt)
+			}
+			// If tt.systemPrompt is explicitly nil in the struct, it will be nil in opts
+
+			logger := log.NewLogger(false)
+			transport := NewSubprocessCLITransport(
+				"/usr/local/bin/claude",
+				"",
+				nil,
+				logger,
+				"",
+				opts,
+			)
+
+			args := transport.buildCommandArgs()
+
+			// Find --system-prompt flag
+			foundFlag := false
+			foundValue := ""
+			for i, arg := range args {
+				if arg == "--system-prompt" && i+1 < len(args) {
+					foundFlag = true
+					foundValue = args[i+1]
+					break
+				}
+			}
+
+			if foundFlag != tt.wantFlag {
+				t.Errorf("--system-prompt flag present = %v, want %v", foundFlag, tt.wantFlag)
+			}
+
+			if foundValue != tt.wantValue {
+				t.Errorf("--system-prompt value = %q, want %q", foundValue, tt.wantValue)
+			}
+		})
+	}
+}
+
+// TestBuildCommandArgs_SystemPromptPreset tests system prompt preset handling
+func TestBuildCommandArgs_SystemPromptPreset(t *testing.T) {
+	appendText := "Additional instructions here"
+	preset := types.SystemPromptPreset{
+		Type:   "preset",
+		Preset: "claude_code",
+		Append: &appendText,
+	}
+
+	opts := types.NewClaudeAgentOptions().
+		WithSystemPromptPreset(preset)
+
+	logger := log.NewLogger(false)
+	transport := NewSubprocessCLITransport(
+		"/usr/local/bin/claude",
+		"",
+		nil,
+		logger,
+		"",
+		opts,
+	)
+
+	args := transport.buildCommandArgs()
+
+	// Find --append-system-prompt flag
+	foundAppendFlag := false
+	foundAppendValue := ""
+	for i, arg := range args {
+		if arg == "--append-system-prompt" && i+1 < len(args) {
+			foundAppendFlag = true
+			foundAppendValue = args[i+1]
+			break
+		}
+	}
+
+	if !foundAppendFlag {
+		t.Errorf("--append-system-prompt flag not found in args: %v", args)
+	}
+
+	if foundAppendValue != appendText {
+		t.Errorf("--append-system-prompt value = %q, want %q", foundAppendValue, appendText)
+	}
+
+	// Should NOT have --system-prompt flag when using preset
+	hasSystemPromptFlag := false
+	for _, arg := range args {
+		if arg == "--system-prompt" {
+			hasSystemPromptFlag = true
+			break
+		}
+	}
+
+	if hasSystemPromptFlag {
+		t.Errorf("--system-prompt flag should not be present when using preset, but found in args: %v", args)
+	}
+}
+
+// TestBuildCommandArgs_NoOptions tests that empty system prompt is used when no options provided
+func TestBuildCommandArgs_NoOptions(t *testing.T) {
+	logger := log.NewLogger(false)
+	transport := NewSubprocessCLITransport(
+		"/usr/local/bin/claude",
+		"",
+		nil,
+		logger,
+		"",
+		nil, // No options
+	)
+
+	args := transport.buildCommandArgs()
+
+	// Find --system-prompt flag
+	foundFlag := false
+	foundValue := ""
+	for i, arg := range args {
+		if arg == "--system-prompt" && i+1 < len(args) {
+			foundFlag = true
+			foundValue = args[i+1]
+			break
+		}
+	}
+
+	if !foundFlag {
+		t.Errorf("--system-prompt flag should be present even with no options")
+	}
+
+	if foundValue != "" {
+		t.Errorf("--system-prompt value = %q, want empty string", foundValue)
+	}
+}
