@@ -923,3 +923,136 @@ func TestBuildCommandArgs_NoOptions(t *testing.T) {
 		t.Errorf("--system-prompt value = %q, want empty string", foundValue)
 	}
 }
+
+// TestBuildCommandArgs_Plugins tests plugin CLI argument generation
+func TestBuildCommandArgs_Plugins(t *testing.T) {
+	tests := []struct {
+		name      string
+		plugins   []types.PluginConfig
+		wantFlags int // Number of --plugin-dir flags expected
+	}{
+		{
+			name:      "no plugins",
+			plugins:   []types.PluginConfig{},
+			wantFlags: 0,
+		},
+		{
+			name: "single plugin",
+			plugins: []types.PluginConfig{
+				*types.NewLocalPluginConfig("/path/to/plugin"),
+			},
+			wantFlags: 1,
+		},
+		{
+			name: "multiple plugins",
+			plugins: []types.PluginConfig{
+				*types.NewLocalPluginConfig("/path/to/plugin1"),
+				*types.NewLocalPluginConfig("/path/to/plugin2"),
+			},
+			wantFlags: 2,
+		},
+		{
+			name: "three plugins",
+			plugins: []types.PluginConfig{
+				*types.NewLocalPluginConfig("./plugins/demo"),
+				*types.NewLocalPluginConfig("./plugins/custom"),
+				*types.NewLocalPluginConfig("/usr/local/share/claude-plugins/tools"),
+			},
+			wantFlags: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := types.NewClaudeAgentOptions().WithPlugins(tt.plugins)
+
+			logger := log.NewLogger(false)
+			transport := NewSubprocessCLITransport(
+				"/usr/local/bin/claude",
+				"",
+				nil,
+				logger,
+				"",
+				opts,
+			)
+
+			args := transport.buildCommandArgs()
+
+			// Count --plugin-dir flags
+			count := 0
+			pluginDirs := []string{}
+			for i, arg := range args {
+				if arg == "--plugin-dir" {
+					count++
+					if i+1 < len(args) {
+						pluginDirs = append(pluginDirs, args[i+1])
+					}
+				}
+			}
+
+			if count != tt.wantFlags {
+				t.Errorf("expected %d --plugin-dir flags, got %d", tt.wantFlags, count)
+			}
+
+			// Verify plugin paths match
+			if len(pluginDirs) != len(tt.plugins) {
+				t.Errorf("expected %d plugin paths, got %d", len(tt.plugins), len(pluginDirs))
+			}
+
+			for i, plugin := range tt.plugins {
+				if i >= len(pluginDirs) {
+					break
+				}
+				if pluginDirs[i] != plugin.Path {
+					t.Errorf("plugin[%d] path = %s, want %s", i, pluginDirs[i], plugin.Path)
+				}
+			}
+		})
+	}
+}
+
+// TestBuildCommandArgs_PluginsWithOtherOptions tests plugins work with other options
+func TestBuildCommandArgs_PluginsWithOtherOptions(t *testing.T) {
+	opts := types.NewClaudeAgentOptions().
+		WithLocalPlugin("./my-plugin").
+		WithModel("claude-3-5-sonnet-20241022").
+		WithMaxThinkingTokens(1000).
+		WithSystemPrompt("You are a helpful assistant")
+
+	logger := log.NewLogger(false)
+	transport := NewSubprocessCLITransport(
+		"/usr/local/bin/claude",
+		"",
+		nil,
+		logger,
+		"",
+		opts,
+	)
+
+	args := transport.buildCommandArgs()
+
+	// Verify plugin flag exists
+	hasPluginDir := false
+	for _, arg := range args {
+		if arg == "--plugin-dir" {
+			hasPluginDir = true
+			break
+		}
+	}
+
+	if !hasPluginDir {
+		t.Error("--plugin-dir flag not found in args")
+	}
+
+	// Verify other flags still work
+	argsStr := strings.Join(args, " ")
+	if !strings.Contains(argsStr, "--model") {
+		t.Error("--model flag not found")
+	}
+	if !strings.Contains(argsStr, "--max-thinking-tokens") {
+		t.Error("--max-thinking-tokens flag not found")
+	}
+	if !strings.Contains(argsStr, "--system-prompt") {
+		t.Error("--system-prompt flag not found")
+	}
+}

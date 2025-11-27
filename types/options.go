@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"fmt"
 )
 
 // SettingSource represents where settings are loaded from.
@@ -26,6 +27,37 @@ type AgentDefinition struct {
 	Prompt      string   `json:"prompt"`
 	Tools       []string `json:"tools,omitempty"`
 	Model       *string  `json:"model,omitempty"` // "sonnet", "opus", "haiku", "inherit"
+}
+
+// PluginConfig represents a Claude Code plugin configuration.
+// Currently only local plugins are supported via the 'local' type.
+type PluginConfig struct {
+	Type string `json:"type"` // "local" - plugin type
+	Path string `json:"path"` // Absolute or relative path to plugin directory
+}
+
+// NewPluginConfig creates a new PluginConfig with validation.
+// Returns an error if the plugin type is not supported or path is empty.
+func NewPluginConfig(pluginType, path string) (*PluginConfig, error) {
+	if pluginType != "local" {
+		return nil, fmt.Errorf("unsupported plugin type %q: only 'local' is supported", pluginType)
+	}
+	if path == "" {
+		return nil, fmt.Errorf("plugin path cannot be empty")
+	}
+	return &PluginConfig{
+		Type: pluginType,
+		Path: path,
+	}, nil
+}
+
+// NewLocalPluginConfig creates a new local plugin configuration.
+// This is a convenience function for the most common plugin type.
+func NewLocalPluginConfig(path string) *PluginConfig {
+	return &PluginConfig{
+		Type: "local",
+		Path: path,
+	}
 }
 
 // McpStdioServerConfig represents an MCP stdio server configuration.
@@ -139,6 +171,9 @@ type ClaudeAgentOptions struct {
 	// Agent definitions
 	Agents map[string]AgentDefinition `json:"agents,omitempty"`
 
+	// Plugin configurations for custom plugins
+	Plugins []PluginConfig `json:"plugins,omitempty"`
+
 	// Debug and diagnostics
 	Verbose bool `json:"-"` // Enable verbose debug logging
 
@@ -158,6 +193,7 @@ func NewClaudeAgentOptions() *ClaudeAgentOptions {
 		ContinueConversation:   false,
 		ForkSession:            false,
 		IncludePartialMessages: false,
+		Plugins:                []PluginConfig{},
 	}
 }
 
@@ -349,6 +385,25 @@ func (o *ClaudeAgentOptions) WithAgent(name string, agent AgentDefinition) *Clau
 		o.Agents = make(map[string]AgentDefinition)
 	}
 	o.Agents[name] = agent
+	return o
+}
+
+// WithPlugins sets the plugin configurations.
+func (o *ClaudeAgentOptions) WithPlugins(plugins []PluginConfig) *ClaudeAgentOptions {
+	o.Plugins = plugins
+	return o
+}
+
+// WithPlugin adds a single plugin configuration.
+func (o *ClaudeAgentOptions) WithPlugin(plugin PluginConfig) *ClaudeAgentOptions {
+	o.Plugins = append(o.Plugins, plugin)
+	return o
+}
+
+// WithLocalPlugin adds a local plugin by path (convenience method).
+// This is the most common way to add plugins.
+func (o *ClaudeAgentOptions) WithLocalPlugin(path string) *ClaudeAgentOptions {
+	o.Plugins = append(o.Plugins, *NewLocalPluginConfig(path))
 	return o
 }
 

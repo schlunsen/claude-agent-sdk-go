@@ -354,6 +354,19 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting max budget: $%.2f USD", *t.options.MaxBudgetUSD)
 	}
 
+	// Add plugin directories
+	if t.options != nil && len(t.options.Plugins) > 0 {
+		for _, plugin := range t.options.Plugins {
+			if plugin.Type == "local" {
+				args = append(args, "--plugin-dir", plugin.Path)
+				t.logger.Debug("Adding plugin directory: %s", plugin.Path)
+			} else {
+				// This shouldn't happen if NewPluginConfig is used, but handle it anyway
+				t.logger.Warning("Skipping unsupported plugin type: %s", plugin.Type)
+			}
+		}
+	}
+
 	return args
 }
 
