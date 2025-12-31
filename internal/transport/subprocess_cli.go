@@ -317,6 +317,44 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting model: %s", *t.options.Model)
 	}
 
+	// Add fallback model if specified
+	if t.options != nil && t.options.FallbackModel != nil {
+		args = append(args, "--fallback-model", *t.options.FallbackModel)
+		t.logger.Debug("Setting fallback model: %s", *t.options.FallbackModel)
+	}
+
+	// Add max turns if specified
+	if t.options != nil && t.options.MaxTurns != nil {
+		args = append(args, "--max-turns", fmt.Sprintf("%d", *t.options.MaxTurns))
+		t.logger.Debug("Setting max turns: %d", *t.options.MaxTurns)
+	}
+
+	// Add tools if specified
+	if t.options != nil && t.options.Tools != nil {
+		switch tools := t.options.Tools.(type) {
+		case []string:
+			if len(tools) == 0 {
+				// Empty slice disables all tools
+				args = append(args, "--tools", "")
+				t.logger.Debug("Setting tools: (disabled)")
+			} else {
+				// Join tools with comma
+				args = append(args, "--tools", joinStrings(tools, ","))
+				t.logger.Debug("Setting tools: %s", joinStrings(tools, ","))
+			}
+		case types.ToolsPreset:
+			// Preset maps to "default"
+			args = append(args, "--tools", "default")
+			t.logger.Debug("Setting tools: default (preset)")
+		}
+	}
+
+	// Add --continue flag if continuing conversation
+	if t.options != nil && t.options.ContinueConversation {
+		args = append(args, "--continue")
+		t.logger.Debug("Continuing previous conversation")
+	}
+
 	// Add --resume flag if resuming a conversation
 	if t.resumeSessionID != "" {
 		args = append(args, "--resume", t.resumeSessionID)
@@ -385,6 +423,14 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		}
 		args = append(args, "--setting-sources", joinStrings(sources, ","))
 		t.logger.Debug("Setting sources: %s", joinStrings(sources, ","))
+	}
+
+	// Add directories if specified
+	if t.options != nil && len(t.options.AddDirs) > 0 {
+		for _, dir := range t.options.AddDirs {
+			args = append(args, "--add-dir", dir)
+			t.logger.Debug("Adding directory: %s", dir)
+		}
 	}
 
 	// Add agents if specified

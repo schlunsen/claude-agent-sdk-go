@@ -70,6 +70,12 @@ type SystemPromptPreset struct {
 	Append *string `json:"append,omitempty"`
 }
 
+// ToolsPreset represents a preset tools configuration.
+type ToolsPreset struct {
+	Type   string `json:"type"`   // "preset"
+	Preset string `json:"preset"` // "claude_code"
+}
+
 // AgentDefinition represents a custom agent definition.
 type AgentDefinition struct {
 	Description   string                 `json:"description"`
@@ -164,6 +170,9 @@ type ClaudeAgentOptions struct {
 	AllowedTools    []string `json:"allowed_tools,omitempty"`
 	DisallowedTools []string `json:"disallowed_tools,omitempty"`
 
+	// Tools - can be []string (specific tools), empty slice (no tools), or ToolsPreset
+	Tools interface{} `json:"tools,omitempty"`
+
 	// System prompt - can be string or SystemPromptPreset
 	SystemPrompt interface{} `json:"system_prompt,omitempty"`
 
@@ -191,6 +200,7 @@ type ClaudeAgentOptions struct {
 
 	// Model and execution limits
 	Model             *string  `json:"model,omitempty"`
+	FallbackModel     *string  `json:"fallback_model,omitempty"` // Fallback model if primary is unavailable
 	MaxTurns          *int     `json:"max_turns,omitempty"`
 	MaxThinkingTokens *int     `json:"max_thinking_tokens,omitempty"` // Maximum tokens for extended thinking
 	MaxBudgetUSD      *float64 `json:"max_budget_usd,omitempty"`      // Maximum budget in USD for this query
@@ -275,6 +285,31 @@ func (o *ClaudeAgentOptions) WithDisallowedTools(tools ...string) *ClaudeAgentOp
 	return o
 }
 
+// WithTools sets the tools configuration.
+// Can be []string for specific tools, empty slice to disable all tools, or ToolsPreset.
+func (o *ClaudeAgentOptions) WithTools(tools interface{}) *ClaudeAgentOptions {
+	o.Tools = tools
+	return o
+}
+
+// WithToolsList sets specific tools to enable.
+func (o *ClaudeAgentOptions) WithToolsList(tools ...string) *ClaudeAgentOptions {
+	o.Tools = tools
+	return o
+}
+
+// WithToolsPreset sets the tools preset (e.g., "claude_code" for default tools).
+func (o *ClaudeAgentOptions) WithToolsPreset(preset ToolsPreset) *ClaudeAgentOptions {
+	o.Tools = preset
+	return o
+}
+
+// WithNoTools disables all tools by setting an empty tools list.
+func (o *ClaudeAgentOptions) WithNoTools() *ClaudeAgentOptions {
+	o.Tools = []string{}
+	return o
+}
+
 // WithSystemPrompt sets the system prompt (can be string or SystemPromptPreset).
 func (o *ClaudeAgentOptions) WithSystemPrompt(prompt interface{}) *ClaudeAgentOptions {
 	o.SystemPrompt = prompt
@@ -332,6 +367,12 @@ func (o *ClaudeAgentOptions) WithForkSession(fork bool) *ClaudeAgentOptions {
 // WithModel sets the model to use.
 func (o *ClaudeAgentOptions) WithModel(model string) *ClaudeAgentOptions {
 	o.Model = &model
+	return o
+}
+
+// WithFallbackModel sets the fallback model to use if primary model is unavailable.
+func (o *ClaudeAgentOptions) WithFallbackModel(model string) *ClaudeAgentOptions {
+	o.FallbackModel = &model
 	return o
 }
 
