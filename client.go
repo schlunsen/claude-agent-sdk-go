@@ -508,3 +508,111 @@ func (c *Client) IsConnected() bool {
 	defer c.mu.Unlock()
 	return c.connected
 }
+
+// SetModel changes the model for subsequent queries in this session.
+//
+// This allows switching between models (e.g., from "haiku" to "sonnet") without
+// closing and reopening the connection. The model change takes effect for all
+// subsequent queries in the session.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - model: The model name to switch to (e.g., "haiku", "sonnet", "opus")
+//
+// Returns an error if:
+//   - Not connected (call Connect() first)
+//   - The control request fails
+//
+// Example:
+//
+//	// Start with haiku for simple tasks
+//	client.Query(ctx, "What is 2+2?")
+//	for msg := range client.ReceiveResponse(ctx) { ... }
+//
+//	// Switch to sonnet for more complex tasks
+//	if err := client.SetModel(ctx, "sonnet"); err != nil {
+//	    log.Fatal(err)
+//	}
+//	client.Query(ctx, "Explain quantum computing")
+//	for msg := range client.ReceiveResponse(ctx) { ... }
+func (c *Client) SetModel(ctx context.Context, model string) error {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	c.mu.Unlock()
+
+	return c.query.SetModel(ctx, model)
+}
+
+// SetPermissionMode changes the permission mode for the session.
+//
+// This allows changing between permission modes (e.g., "default", "accept-edits",
+// "plan-mode") without closing and reopening the connection.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - mode: The permission mode to switch to
+//
+// Returns an error if:
+//   - Not connected (call Connect() first)
+//   - The control request fails
+func (c *Client) SetPermissionMode(ctx context.Context, mode string) error {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	c.mu.Unlock()
+
+	return c.query.SetPermissionMode(ctx, mode)
+}
+
+// Interrupt sends an interrupt signal to stop current processing.
+//
+// This can be used to cancel a long-running operation or stop Claude
+// mid-response. The current operation will be terminated and control
+// will return to the caller.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//
+// Returns an error if:
+//   - Not connected (call Connect() first)
+//   - The control request fails
+func (c *Client) Interrupt(ctx context.Context) error {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	c.mu.Unlock()
+
+	return c.query.Interrupt(ctx)
+}
+
+// RewindFiles rewinds tracked files to their state at a specific user message.
+//
+// This allows reverting file changes made during the session to a previous
+// checkpoint. Requires file checkpointing to be enabled via the
+// EnableFileCheckpointing option when creating the client.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - userMessageID: UUID of the user message to rewind to
+//
+// Returns an error if:
+//   - Not connected (call Connect() first)
+//   - The control request fails
+//   - File checkpointing is not enabled
+func (c *Client) RewindFiles(ctx context.Context, userMessageID string) error {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	c.mu.Unlock()
+
+	return c.query.RewindFiles(ctx, userMessageID)
+}

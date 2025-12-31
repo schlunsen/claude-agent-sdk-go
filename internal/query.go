@@ -665,6 +665,46 @@ func (q *Query) AddMCPServer(name string, server types.MCPServer) {
 	q.mcpServers[name] = server
 }
 
+// SetPermissionMode sends a permission mode change request to the CLI.
+func (q *Query) SetPermissionMode(ctx context.Context, mode string) error {
+	request := map[string]any{
+		"subtype": "set_permission_mode",
+		"mode":    mode,
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// SetModel sends a model change request to the CLI.
+func (q *Query) SetModel(ctx context.Context, model string) error {
+	request := map[string]any{
+		"subtype": "set_model",
+		"model":   model,
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// Interrupt sends an interrupt signal to stop current processing.
+func (q *Query) Interrupt(ctx context.Context) error {
+	request := map[string]any{
+		"subtype": "interrupt",
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// RewindFiles rewinds tracked files to their state at a specific user message.
+// Requires file checkpointing to be enabled via the EnableFileCheckpointing option.
+func (q *Query) RewindFiles(ctx context.Context, userMessageID string) error {
+	request := map[string]any{
+		"subtype":         "rewind_files",
+		"user_message_id": userMessageID,
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
 // matchesToolName checks if a tool name matches a matcher pattern.
 // nolint:unused
 func matchesToolName(toolName string, pattern *string) bool {
