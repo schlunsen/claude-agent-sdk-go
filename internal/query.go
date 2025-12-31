@@ -666,7 +666,7 @@ func (q *Query) AddMCPServer(name string, server types.MCPServer) {
 }
 
 // SetPermissionMode sends a permission mode change request to the CLI.
-func (q *Query) SetPermissionMode(ctx context.Context, mode string) error {
+func (q *Query) SetPermissionMode(ctx context.Context, mode types.PermissionMode) error {
 	request := map[string]any{
 		"subtype": "set_permission_mode",
 		"mode":    mode,

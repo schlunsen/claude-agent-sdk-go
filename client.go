@@ -558,7 +558,7 @@ func (c *Client) SetModel(ctx context.Context, model string) error {
 // Returns an error if:
 //   - Not connected (call Connect() first)
 //   - The control request fails
-func (c *Client) SetPermissionMode(ctx context.Context, mode string) error {
+func (c *Client) SetPermissionMode(ctx context.Context, mode types.PermissionMode) error {
 	c.mu.Lock()
 	if !c.connected || c.query == nil {
 		c.mu.Unlock()
