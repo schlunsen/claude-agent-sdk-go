@@ -72,6 +72,18 @@ func NewQuery(ctx context.Context, transport transport.Transport, opts *types.Cl
 	if opts != nil {
 		q.canUseTool = opts.CanUseTool
 		q.hooks = opts.Hooks
+
+		// Register SDK MCP servers from options
+		if opts.McpServers != nil {
+			if serversMap, ok := opts.McpServers.(map[string]interface{}); ok {
+				for name, server := range serversMap {
+					if sdkServer, ok := server.(*types.SDKMCPServer); ok {
+						q.mcpServers[name] = sdkServer
+						logger.Debug("Registered SDK MCP server: %s", name)
+					}
+				}
+			}
+		}
 	}
 
 	return q

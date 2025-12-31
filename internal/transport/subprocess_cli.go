@@ -317,6 +317,18 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting model: %s", *t.options.Model)
 	}
 
+	// Add allowed tools if specified
+	if t.options != nil && len(t.options.AllowedTools) > 0 {
+		args = append(args, "--allowedTools", joinStrings(t.options.AllowedTools, ","))
+		t.logger.Debug("Setting allowed tools: %s", joinStrings(t.options.AllowedTools, ","))
+	}
+
+	// Add disallowed tools if specified
+	if t.options != nil && len(t.options.DisallowedTools) > 0 {
+		args = append(args, "--disallowedTools", joinStrings(t.options.DisallowedTools, ","))
+		t.logger.Debug("Setting disallowed tools: %s", joinStrings(t.options.DisallowedTools, ","))
+	}
+
 	// Add --resume flag if resuming a conversation
 	if t.resumeSessionID != "" {
 		args = append(args, "--resume", t.resumeSessionID)
@@ -446,6 +458,55 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 			} else {
 				args = append(args, "--subagent-execution", string(subagentJSONBytes))
 				t.logger.Debug("Subagent execution configuration: %s", string(subagentJSONBytes))
+			}
+		}
+	}
+
+	// Add MCP server configuration if specified
+	if t.options != nil && t.options.McpServers != nil {
+		switch servers := t.options.McpServers.(type) {
+		case string:
+			// Path to config file - pass directly
+			args = append(args, "--mcp-config", servers)
+			t.logger.Debug("MCP config path: %s", servers)
+		case map[string]interface{}:
+			// Map of server configs - serialize to JSON
+			serversForCLI := make(map[string]interface{})
+			for name, config := range servers {
+				// Check if SDK server - strip instance field
+				if configMap, ok := config.(map[string]interface{}); ok {
+					if configMap["type"] == "sdk" {
+						stripped := make(map[string]interface{})
+						for k, v := range configMap {
+							if k != "instance" {
+								stripped[k] = v
+							}
+						}
+						serversForCLI[name] = stripped
+						continue
+					}
+				}
+				// Check if SDKMCPServer instance
+				if sdkServer, ok := config.(*types.SDKMCPServer); ok {
+					serversForCLI[name] = map[string]interface{}{
+						"type": "sdk",
+						"name": sdkServer.Name(),
+					}
+					continue
+				}
+				// Pass other configs as-is (stdio, sse, http)
+				serversForCLI[name] = config
+			}
+
+			if len(serversForCLI) > 0 {
+				mcpConfig := map[string]interface{}{"mcpServers": serversForCLI}
+				mcpConfigJSON, err := json.Marshal(mcpConfig)
+				if err != nil {
+					t.logger.Warning("Failed to marshal MCP config: %v", err)
+				} else {
+					args = append(args, "--mcp-config", string(mcpConfigJSON))
+					t.logger.Debug("MCP configuration: %s", string(mcpConfigJSON))
+				}
 			}
 		}
 	}
