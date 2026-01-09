@@ -164,14 +164,14 @@ type OutputFormat struct {
 	// Type must be "json_schema" for structured outputs
 	Type string `json:"type"`
 
-	// Schema is the JSON Schema definition for the output format
-	// Can be a map[string]interface{} for dynamic schemas
-	Schema interface{} `json:"schema"`
+	// Schema is the JSON Schema definition for the output format.
+	// Must be a map[string]interface{} representing a valid JSON Schema.
+	Schema map[string]interface{} `json:"schema"`
 }
 
 // NewOutputFormat creates a new OutputFormat with the given JSON schema.
-// The schema can be a map[string]interface{} or any JSON-serializable type.
-func NewOutputFormat(schema interface{}) *OutputFormat {
+// The schema must be a map[string]interface{} representing a valid JSON Schema.
+func NewOutputFormat(schema map[string]interface{}) *OutputFormat {
 	return &OutputFormat{
 		Type:   "json_schema",
 		Schema: schema,
@@ -593,7 +593,7 @@ func (o *ClaudeAgentOptions) WithAllowDangerouslySkipPermissions(allow bool) *Cl
 
 // WithOutputFormat sets the structured output format with a JSON schema.
 // The agent's final response will be validated against this schema.
-// The schema can be a map[string]interface{} representing a JSON Schema.
+// The schema must be a map[string]interface{} representing a valid JSON Schema.
 //
 // Example:
 //
@@ -606,7 +606,7 @@ func (o *ClaudeAgentOptions) WithAllowDangerouslySkipPermissions(allow bool) *Cl
 //	    "required": []string{"name", "count"},
 //	}
 //	options.WithOutputFormat(schema)
-func (o *ClaudeAgentOptions) WithOutputFormat(schema interface{}) *ClaudeAgentOptions {
+func (o *ClaudeAgentOptions) WithOutputFormat(schema map[string]interface{}) *ClaudeAgentOptions {
 	o.OutputFormat = NewOutputFormat(schema)
 	return o
 }
