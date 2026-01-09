@@ -465,7 +465,7 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 			} else {
 				// Add --json-schema argument with the schema JSON
 				args = append(args, "--json-schema", string(schemaJSON))
-				t.logger.Debug("Setting structured output format with JSON schema")
+				t.logger.Debug("Setting structured output format with JSON schema: %s", string(schemaJSON))
 			}
 		}
 	}
