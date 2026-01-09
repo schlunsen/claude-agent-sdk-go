@@ -224,3 +224,175 @@ func TestResultMessageMarshaling(t *testing.T) {
 		t.Errorf("total cost doesn't match")
 	}
 }
+
+// TestUnmarshalResultMessage_WithStructuredOutput tests parsing ResultMessage with structured_output field.
+func TestUnmarshalResultMessage_WithStructuredOutput(t *testing.T) {
+	t.Run("simple structured output", func(t *testing.T) {
+		jsonData := `{
+			"type": "result",
+			"subtype": "success",
+			"duration_ms": 1000,
+			"duration_api_ms": 500,
+			"is_error": false,
+			"num_turns": 1,
+			"session_id": "test-session",
+			"structured_output": {
+				"name": "test",
+				"count": 42
+			}
+		}`
+
+		msg, err := UnmarshalMessage([]byte(jsonData))
+		if err != nil {
+			t.Fatalf("UnmarshalMessage failed: %v", err)
+		}
+
+		result, ok := msg.(*ResultMessage)
+		if !ok {
+			t.Fatalf("expected *ResultMessage, got %T", msg)
+		}
+
+		if result.StructuredOutput == nil {
+			t.Fatal("StructuredOutput should not be nil")
+		}
+
+		// Verify structured output content
+		output, ok := result.StructuredOutput.(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected StructuredOutput to be map[string]interface{}, got %T", result.StructuredOutput)
+		}
+
+		if output["name"] != "test" {
+			t.Errorf("expected name 'test', got %v", output["name"])
+		}
+
+		// JSON numbers are unmarshaled as float64
+		if count, ok := output["count"].(float64); !ok || count != 42 {
+			t.Errorf("expected count 42, got %v", output["count"])
+		}
+	})
+
+	t.Run("nested structured output", func(t *testing.T) {
+		jsonData := `{
+			"type": "result",
+			"subtype": "success",
+			"duration_ms": 1000,
+			"duration_api_ms": 500,
+			"is_error": false,
+			"num_turns": 1,
+			"session_id": "test-session",
+			"structured_output": {
+				"analysis": {
+					"word_count": 100,
+					"has_errors": false
+				},
+				"items": ["item1", "item2", "item3"]
+			}
+		}`
+
+		msg, err := UnmarshalMessage([]byte(jsonData))
+		if err != nil {
+			t.Fatalf("UnmarshalMessage failed: %v", err)
+		}
+
+		result, ok := msg.(*ResultMessage)
+		if !ok {
+			t.Fatalf("expected *ResultMessage, got %T", msg)
+		}
+
+		if result.StructuredOutput == nil {
+			t.Fatal("StructuredOutput should not be nil")
+		}
+
+		output, ok := result.StructuredOutput.(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected StructuredOutput to be map[string]interface{}, got %T", result.StructuredOutput)
+		}
+
+		// Check nested object
+		analysis, ok := output["analysis"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected analysis to be a map")
+		}
+
+		if wc, ok := analysis["word_count"].(float64); !ok || wc != 100 {
+			t.Errorf("expected word_count 100, got %v", analysis["word_count"])
+		}
+
+		if hasErr, ok := analysis["has_errors"].(bool); !ok || hasErr != false {
+			t.Errorf("expected has_errors false, got %v", analysis["has_errors"])
+		}
+
+		// Check array
+		items, ok := output["items"].([]interface{})
+		if !ok {
+			t.Fatal("expected items to be an array")
+		}
+
+		if len(items) != 3 {
+			t.Errorf("expected 3 items, got %d", len(items))
+		}
+	})
+
+	t.Run("nil structured output when not present", func(t *testing.T) {
+		jsonData := `{
+			"type": "result",
+			"subtype": "success",
+			"duration_ms": 1000,
+			"duration_api_ms": 500,
+			"is_error": false,
+			"num_turns": 1,
+			"session_id": "test-session"
+		}`
+
+		msg, err := UnmarshalMessage([]byte(jsonData))
+		if err != nil {
+			t.Fatalf("UnmarshalMessage failed: %v", err)
+		}
+
+		result, ok := msg.(*ResultMessage)
+		if !ok {
+			t.Fatalf("expected *ResultMessage, got %T", msg)
+		}
+
+		if result.StructuredOutput != nil {
+			t.Errorf("expected StructuredOutput to be nil when not in JSON, got %v", result.StructuredOutput)
+		}
+	})
+
+	t.Run("array structured output", func(t *testing.T) {
+		jsonData := `{
+			"type": "result",
+			"subtype": "success",
+			"duration_ms": 1000,
+			"duration_api_ms": 500,
+			"is_error": false,
+			"num_turns": 1,
+			"session_id": "test-session",
+			"structured_output": [1, 2, 3, 4, 5]
+		}`
+
+		msg, err := UnmarshalMessage([]byte(jsonData))
+		if err != nil {
+			t.Fatalf("UnmarshalMessage failed: %v", err)
+		}
+
+		result, ok := msg.(*ResultMessage)
+		if !ok {
+			t.Fatalf("expected *ResultMessage, got %T", msg)
+		}
+
+		if result.StructuredOutput == nil {
+			t.Fatal("StructuredOutput should not be nil")
+		}
+
+		output, ok := result.StructuredOutput.([]interface{})
+		if !ok {
+			t.Fatalf("expected StructuredOutput to be []interface{}, got %T", result.StructuredOutput)
+		}
+
+		if len(output) != 5 {
+			t.Errorf("expected 5 items, got %d", len(output))
+		}
+	})
+}

@@ -585,3 +585,145 @@ func TestWithSubagentExecution(t *testing.T) {
 		}
 	})
 }
+
+// TestWithOutputFormat tests the WithOutputFormat builder method.
+func TestWithOutputFormat(t *testing.T) {
+	t.Run("sets output format with schema", func(t *testing.T) {
+		opts := NewClaudeAgentOptions()
+		schema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"name":  map[string]interface{}{"type": "string"},
+				"count": map[string]interface{}{"type": "number"},
+			},
+			"required": []string{"name", "count"},
+		}
+
+		result := opts.WithOutputFormat(schema)
+
+		// Verify the method returns the same instance for chaining
+		if result != opts {
+			t.Error("WithOutputFormat should return the same instance for chaining")
+		}
+
+		// Verify OutputFormat is set
+		if opts.OutputFormat == nil {
+			t.Fatal("OutputFormat should not be nil after setting")
+		}
+
+		// Verify Type is "json_schema"
+		if opts.OutputFormat.Type != "json_schema" {
+			t.Errorf("expected Type to be 'json_schema', got %s", opts.OutputFormat.Type)
+		}
+
+		// Verify Schema is set correctly
+		if opts.OutputFormat.Schema == nil {
+			t.Fatal("OutputFormat.Schema should not be nil")
+		}
+
+		schemaMap, ok := opts.OutputFormat.Schema.(map[string]interface{})
+		if !ok {
+			t.Fatal("OutputFormat.Schema should be a map[string]interface{}")
+		}
+
+		if schemaMap["type"] != "object" {
+			t.Errorf("expected schema type 'object', got %v", schemaMap["type"])
+		}
+	})
+
+	t.Run("method chaining works", func(t *testing.T) {
+		schema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"result": map[string]interface{}{"type": "string"},
+			},
+			"required": []string{"result"},
+		}
+
+		opts := NewClaudeAgentOptions().
+			WithModel("claude-opus-4-5-latest").
+			WithOutputFormat(schema).
+			WithMaxTurns(10)
+
+		if opts.OutputFormat == nil {
+			t.Fatal("OutputFormat should be set")
+		}
+
+		if opts.OutputFormat.Type != "json_schema" {
+			t.Errorf("expected Type to be 'json_schema'")
+		}
+
+		if opts.Model == nil || *opts.Model != "claude-opus-4-5-latest" {
+			t.Errorf("Model should be set")
+		}
+
+		if opts.MaxTurns == nil || *opts.MaxTurns != 10 {
+			t.Errorf("MaxTurns should be set")
+		}
+	})
+
+	t.Run("replaces existing output format", func(t *testing.T) {
+		opts := NewClaudeAgentOptions()
+
+		schema1 := map[string]interface{}{"type": "string"}
+		opts.WithOutputFormat(schema1)
+
+		schema2 := map[string]interface{}{"type": "number"}
+		opts.WithOutputFormat(schema2)
+
+		if opts.OutputFormat.Schema != schema2 {
+			t.Errorf("expected Schema to be replaced")
+		}
+	})
+
+	t.Run("nil output format by default", func(t *testing.T) {
+		opts := NewClaudeAgentOptions()
+		if opts.OutputFormat != nil {
+			t.Errorf("expected OutputFormat to be nil by default")
+		}
+	})
+}
+
+// TestNewOutputFormat tests the NewOutputFormat constructor.
+func TestNewOutputFormat(t *testing.T) {
+	t.Run("creates output format with json_schema type", func(t *testing.T) {
+		schema := map[string]interface{}{"type": "string"}
+		of := NewOutputFormat(schema)
+
+		if of.Type != "json_schema" {
+			t.Errorf("expected Type to be 'json_schema', got %s", of.Type)
+		}
+
+		if of.Schema != schema {
+			t.Errorf("expected Schema to be the provided schema")
+		}
+	})
+
+	t.Run("works with complex schemas", func(t *testing.T) {
+		schema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"items": map[string]interface{}{
+					"type": "array",
+					"items": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"name":  map[string]interface{}{"type": "string"},
+							"value": map[string]interface{}{"type": "number"},
+						},
+					},
+				},
+			},
+		}
+
+		of := NewOutputFormat(schema)
+
+		if of.Type != "json_schema" {
+			t.Error("Type should be json_schema")
+		}
+
+		if of.Schema == nil {
+			t.Fatal("Schema should not be nil")
+		}
+	})
+}

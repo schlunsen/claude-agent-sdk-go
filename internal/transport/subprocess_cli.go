@@ -450,6 +450,26 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		}
 	}
 
+	// Add structured output format (JSON schema) if specified
+	if t.options != nil && t.options.OutputFormat != nil {
+		of := t.options.OutputFormat
+
+		// Validate type is "json_schema"
+		if of.Type != "json_schema" {
+			t.logger.Warning("Invalid output format type: %s (expected 'json_schema')", of.Type)
+		} else {
+			// Marshal schema to JSON
+			schemaJSON, err := json.Marshal(of.Schema)
+			if err != nil {
+				t.logger.Warning("Failed to marshal output format schema: %v", err)
+			} else {
+				// Add --json-schema argument with the schema JSON
+				args = append(args, "--json-schema", string(schemaJSON))
+				t.logger.Debug("Setting structured output format with JSON schema")
+			}
+		}
+	}
+
 	return args
 }
 

@@ -354,6 +354,10 @@ type ResultMessage struct {
 	TotalCostUSD  *float64               `json:"total_cost_usd,omitempty"`
 	Usage         map[string]interface{} `json:"usage,omitempty"`
 	Result        *string                `json:"result,omitempty"`
+	// StructuredOutput contains the validated JSON output when using structured outputs.
+	// This is present when OutputFormat is specified in the query options.
+	// The value is already parsed as interface{} and can be type-asserted or re-marshaled.
+	StructuredOutput interface{} `json:"structured_output,omitempty"`
 }
 
 // GetMessageType returns the type of the message.

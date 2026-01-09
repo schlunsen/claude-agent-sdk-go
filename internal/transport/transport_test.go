@@ -1806,3 +1806,265 @@ func TestBuildCommandArgs_AgentsWithSubagentExecution(t *testing.T) {
 		t.Error("--subagent-execution flag should be present")
 	}
 }
+
+// TestBuildCommandArgs_OutputFormat tests structured output format (JSON schema) CLI argument generation
+func TestBuildCommandArgs_OutputFormat(t *testing.T) {
+	t.Run("simple object schema", func(t *testing.T) {
+		schema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"name":  map[string]interface{}{"type": "string"},
+				"count": map[string]interface{}{"type": "number"},
+			},
+			"required": []string{"name", "count"},
+		}
+
+		opts := types.NewClaudeAgentOptions().
+			WithOutputFormat(schema)
+
+		transport := NewSubprocessCLITransport(
+			"claude",
+			"",
+			nil,
+			log.NewLogger(false),
+			"",
+			opts,
+		)
+
+		args := transport.buildCommandArgs()
+
+		// Find --json-schema flag
+		jsonSchemaIdx := -1
+		for i, arg := range args {
+			if arg == "--json-schema" {
+				jsonSchemaIdx = i
+				break
+			}
+		}
+
+		if jsonSchemaIdx == -1 {
+			t.Fatal("--json-schema flag not found in command arguments")
+		}
+
+		if jsonSchemaIdx+1 >= len(args) {
+			t.Fatal("--json-schema flag has no value")
+		}
+
+		schemaJSON := args[jsonSchemaIdx+1]
+
+		// Verify JSON can be unmarshaled
+		var parsedSchema map[string]interface{}
+		if err := json.Unmarshal([]byte(schemaJSON), &parsedSchema); err != nil {
+			t.Fatalf("Failed to unmarshal schema JSON: %v", err)
+		}
+
+		// Verify schema structure
+		if parsedSchema["type"] != "object" {
+			t.Errorf("Expected schema type 'object', got %v", parsedSchema["type"])
+		}
+
+		props, ok := parsedSchema["properties"].(map[string]interface{})
+		if !ok {
+			t.Fatal("Schema properties should be a map")
+		}
+
+		if props["name"] == nil || props["count"] == nil {
+			t.Error("Schema should have 'name' and 'count' properties")
+		}
+	})
+
+	t.Run("nested schema", func(t *testing.T) {
+		schema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"analysis": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"word_count": map[string]interface{}{"type": "integer"},
+						"has_errors": map[string]interface{}{"type": "boolean"},
+					},
+					"required": []string{"word_count", "has_errors"},
+				},
+				"items": map[string]interface{}{
+					"type":  "array",
+					"items": map[string]interface{}{"type": "string"},
+				},
+			},
+			"required": []string{"analysis", "items"},
+		}
+
+		opts := types.NewClaudeAgentOptions().
+			WithOutputFormat(schema)
+
+		transport := NewSubprocessCLITransport(
+			"claude",
+			"",
+			nil,
+			log.NewLogger(false),
+			"",
+			opts,
+		)
+
+		args := transport.buildCommandArgs()
+
+		// Find --json-schema flag
+		jsonSchemaIdx := -1
+		for i, arg := range args {
+			if arg == "--json-schema" {
+				jsonSchemaIdx = i
+				break
+			}
+		}
+
+		if jsonSchemaIdx == -1 {
+			t.Fatal("--json-schema flag not found")
+		}
+
+		schemaJSON := args[jsonSchemaIdx+1]
+		var parsedSchema map[string]interface{}
+		if err := json.Unmarshal([]byte(schemaJSON), &parsedSchema); err != nil {
+			t.Fatalf("Failed to unmarshal schema JSON: %v", err)
+		}
+
+		// Verify nested structure
+		props, ok := parsedSchema["properties"].(map[string]interface{})
+		if !ok {
+			t.Fatal("Schema should have properties")
+		}
+
+		// Check nested analysis object
+		analysis := props["analysis"].(map[string]interface{})
+		if analysis == nil {
+			t.Fatal("Analysis property should exist")
+		}
+
+		analysisProps := analysis["properties"].(map[string]interface{})
+		if analysisProps["word_count"] == nil || analysisProps["has_errors"] == nil {
+			t.Error("Analysis should have word_count and has_errors")
+		}
+
+		// Check items array
+		items := props["items"].(map[string]interface{})
+		if items == nil || items["type"] != "array" {
+			t.Error("Items should be an array type")
+		}
+	})
+
+	t.Run("array schema", func(t *testing.T) {
+		schema := map[string]interface{}{
+			"type": "array",
+			"items": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id":    map[string]interface{}{"type": "string"},
+					"value": map[string]interface{}{"type": "number"},
+				},
+			},
+		}
+
+		opts := types.NewClaudeAgentOptions().
+			WithOutputFormat(schema)
+
+		transport := NewSubprocessCLITransport(
+			"claude",
+			"",
+			nil,
+			log.NewLogger(false),
+			"",
+			opts,
+		)
+
+		args := transport.buildCommandArgs()
+
+		jsonSchemaIdx := -1
+		for i, arg := range args {
+			if arg == "--json-schema" {
+				jsonSchemaIdx = i
+				break
+			}
+		}
+
+		if jsonSchemaIdx == -1 {
+			t.Fatal("--json-schema flag not found")
+		}
+
+		schemaJSON := args[jsonSchemaIdx+1]
+		var parsedSchema map[string]interface{}
+		if err := json.Unmarshal([]byte(schemaJSON), &parsedSchema); err != nil {
+			t.Fatalf("Failed to unmarshal schema JSON: %v", err)
+		}
+
+		if parsedSchema["type"] != "array" {
+			t.Errorf("Expected schema type 'array', got %v", parsedSchema["type"])
+		}
+	})
+
+	t.Run("output format with other options", func(t *testing.T) {
+		schema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"result": map[string]interface{}{"type": "string"},
+			},
+		}
+
+		opts := types.NewClaudeAgentOptions().
+			WithOutputFormat(schema).
+			WithModel("claude-3-5-sonnet-20241022").
+			WithMaxTurns(10)
+
+		transport := NewSubprocessCLITransport(
+			"claude",
+			"",
+			nil,
+			log.NewLogger(false),
+			"",
+			opts,
+		)
+
+		args := transport.buildCommandArgs()
+		argsStr := strings.Join(args, " ")
+
+		// Verify --json-schema flag exists
+		hasJSONSchema := false
+		for _, arg := range args {
+			if arg == "--json-schema" {
+				hasJSONSchema = true
+				break
+			}
+		}
+
+		if !hasJSONSchema {
+			t.Error("--json-schema flag not found")
+		}
+
+		// Verify other flags still work
+		if !strings.Contains(argsStr, "--model") {
+			t.Error("--model flag not found")
+		}
+		if !strings.Contains(argsStr, "--max-turns") {
+			t.Error("--max-turns flag not found")
+		}
+	})
+
+	t.Run("no output format when not specified", func(t *testing.T) {
+		opts := types.NewClaudeAgentOptions()
+
+		transport := NewSubprocessCLITransport(
+			"claude",
+			"",
+			nil,
+			log.NewLogger(false),
+			"",
+			opts,
+		)
+
+		args := transport.buildCommandArgs()
+
+		// Verify --json-schema flag is not present
+		for _, arg := range args {
+			if arg == "--json-schema" {
+				t.Fatal("--json-schema flag should not be present when output format is not set")
+			}
+		}
+	})
+}

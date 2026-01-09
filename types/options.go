@@ -158,6 +158,26 @@ type HookMatcher struct {
 // StderrCallbackFunc is a callback function for stderr output from the CLI.
 type StderrCallbackFunc func(line string)
 
+// OutputFormat represents the output format configuration for structured outputs.
+// This enables agents to return validated JSON matching a specific JSON Schema.
+type OutputFormat struct {
+	// Type must be "json_schema" for structured outputs
+	Type string `json:"type"`
+
+	// Schema is the JSON Schema definition for the output format
+	// Can be a map[string]interface{} for dynamic schemas
+	Schema interface{} `json:"schema"`
+}
+
+// NewOutputFormat creates a new OutputFormat with the given JSON schema.
+// The schema can be a map[string]interface{} or any JSON-serializable type.
+func NewOutputFormat(schema interface{}) *OutputFormat {
+	return &OutputFormat{
+		Type:   "json_schema",
+		Schema: schema,
+	}
+}
+
 // ClaudeAgentOptions represents configuration options for the Claude SDK.
 type ClaudeAgentOptions struct {
 	// Tool configuration
@@ -246,6 +266,9 @@ type ClaudeAgentOptions struct {
 	// - &"path": Use custom path
 	// For runtime control, use the Stderr callback instead
 	StderrLogFile *string `json:"-"`
+
+	// OutputFormat for structured outputs (validates JSON responses against a schema)
+	OutputFormat *OutputFormat `json:"output_format,omitempty"`
 }
 
 // NewClaudeAgentOptions creates a new ClaudeAgentOptions with sensible defaults.
@@ -565,5 +588,25 @@ func (o *ClaudeAgentOptions) WithDangerouslySkipPermissions(skip bool) *ClaudeAg
 // This is the "safety switch" that allows the dangerous flag to work.
 func (o *ClaudeAgentOptions) WithAllowDangerouslySkipPermissions(allow bool) *ClaudeAgentOptions {
 	o.AllowDangerouslySkipPermissions = allow
+	return o
+}
+
+// WithOutputFormat sets the structured output format with a JSON schema.
+// The agent's final response will be validated against this schema.
+// The schema can be a map[string]interface{} representing a JSON Schema.
+//
+// Example:
+//
+//	schema := map[string]interface{}{
+//	    "type": "object",
+//	    "properties": map[string]interface{}{
+//	        "name": map[string]interface{}{"type": "string"},
+//	        "count": map[string]interface{}{"type": "number"},
+//	    },
+//	    "required": []string{"name", "count"},
+//	}
+//	options.WithOutputFormat(schema)
+func (o *ClaudeAgentOptions) WithOutputFormat(schema interface{}) *ClaudeAgentOptions {
+	o.OutputFormat = NewOutputFormat(schema)
 	return o
 }
