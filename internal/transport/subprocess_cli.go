@@ -287,6 +287,13 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting permission mode: %s", string(*t.options.PermissionMode))
 	}
 
+	if t.options != nil && len(t.options.AddDirs) > 0 {
+		for _, dir := range t.options.AddDirs {
+			args = append(args, "--add-dir", dir)
+			t.logger.Debug("Adding additional directory: %s", dir)
+		}
+	}
+
 	// Add system prompt - always pass the flag to match Python SDK behavior
 	// When nil, pass empty string to prevent unintended Claude Code defaults
 	if t.options != nil {
