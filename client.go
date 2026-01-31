@@ -189,6 +189,7 @@ func (c *Client) Connect(ctx context.Context) error {
 	// Connect transport
 	if err := c.transport.Connect(ctx); err != nil {
 		c.logger.Error("Failed to connect transport: %v", err)
+		_ = c.transport.Close(ctx)
 		return types.NewCLIConnectionErrorWithCause("failed to connect to Claude CLI", err)
 	}
 	c.logger.Debug("Transport connected successfully")

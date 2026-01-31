@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/schlunsen/claude-agent-sdk-go/internal/log"
 	"github.com/schlunsen/claude-agent-sdk-go/types"
@@ -152,7 +153,14 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 		t.logger.Error("Failed to start subprocess: %v", err)
 		return types.NewCLIConnectionErrorWithCause("failed to start subprocess", err)
 	}
-	t.logger.Debug("CLI subprocess started successfully (PID: %d)", t.cmd.Process.Pid)
+	t.logger.Debug("CLI subprocess started (PID: %d)", t.cmd.Process.Pid)
+
+	var waitErr error
+	go func() {
+		// monitor t.cmd and see that it doesn't immediately die after being forked by Start()
+		t.logger.Debug("Monitoring CLI subprocess (PID: %d) for liveness", t.cmd.Process.Pid)
+		waitErr = t.cmd.Wait()
+	}()
 
 	// Create JSON line writer for stdin
 	t.writer = NewJSONLineWriter(t.stdin)
@@ -161,7 +169,22 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 	go t.messageReaderLoop(t.ctx)
 
 	// Launch stderr reader for debugging
+	// If the subprocess dies immediately after cmd.Start(), the stderr hook can be used to read the error output
 	go t.readStderr(t.ctx)
+
+	// ensure that cmd.Start() didn't die immediately
+	time.Sleep(500 * time.Millisecond)
+	if waitErr != nil {
+		t.logger.Error("Subprocess (PID: %d) unexpectedly exited: %v", t.cmd.Process.Pid, waitErr)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return types.NewProcessErrorWithCode(
+				"subprocess exited with error",
+				exitErr.ExitCode(),
+			)
+		} else {
+			return types.NewProcessErrorWithCause("subprocess exited with error", err)
+		}
+	}
 
 	// Mark as ready
 	t.ready = true
