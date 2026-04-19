@@ -2,6 +2,33 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.8.1] - 2026-04-19
+
+### Added
+- `middleware/rtk` stats helpers for surfacing RTK compression savings
+  in UIs and dashboards:
+  - `Gain(ctx, opts...)` shells out to `rtk gain --format json` and
+    decodes into typed Go structs (`GainExport`, `GainSummary`,
+    `DayStats`, `WeekStats`, `MonthStats`). Options:
+    `WithProject`, `WithDaily`, `WithWeekly`, `WithMonthly`, `WithAll`,
+    `WithGainBinary`, `WithGainEnv`.
+  - `TrackingDBPath()` returns the platform-specific path to rtk's
+    SQLite tracking database (macOS `~/Library/Application Support/rtk`,
+    Linux `$XDG_DATA_HOME/rtk` with `~/.local/share/rtk` fallback,
+    Windows `%APPDATA%/rtk`). Callers who want per-invocation rows
+    (which `rtk gain` does not export as JSON) can open the DB directly.
+  - `IsInstalled(binary)` thin `exec.LookPath` wrapper for cheap
+    health-check style calls.
+  - `ErrRTKNotInstalled` sentinel and `*GainError` with preserved
+    stderr for actionable error handling.
+- 12 additional tests covering Gain argv construction, all breakdown
+  flags, non-zero exits, empty/invalid JSON, missing binary, custom
+  binary names, and platform-specific tracking DB paths.
+
+### Notes
+- `rtk gain --history`, `--failures`, and `--quota` remain text-only
+  upstream; these have no JSON export path and are not wrapped.
+
 ## [0.8.0] - 2026-04-19
 
 ### Added

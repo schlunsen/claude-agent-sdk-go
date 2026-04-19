@@ -543,6 +543,28 @@ Only the `Bash` tool is affected; built-in `Read` / `Grep` / `Glob`
 bypass the hook. See `middleware/rtk/doc.go` for all options
 (`WithCommands`, `WithAddedCommands`, `WithBlocked`, `WithBinary`).
 
+Surface compression stats in your UI or dashboard with the
+`Gain` helper (wraps `rtk gain --format json`):
+
+```go
+export, err := rtk.Gain(ctx,
+    rtk.WithAll(),                 // include daily/weekly/monthly breakdowns
+    rtk.WithProject("/path/to/project"),
+)
+if errors.Is(err, rtk.ErrRTKNotInstalled) {
+    // rtk not on PATH — fall back silently
+} else if err != nil {
+    log.Printf("rtk gain: %v", err)
+} else {
+    log.Printf("saved %d tokens (%.1f%%)",
+        export.Summary.TotalSaved, export.Summary.AvgSavingsPct)
+}
+```
+
+`rtk.TrackingDBPath()` returns the platform-specific location of
+rtk's SQLite tracking database for callers who need per-invocation
+rows (which `rtk gain` only exposes as aggregates).
+
 ## Development
 
 ### Prerequisites
