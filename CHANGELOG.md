@@ -2,6 +2,17 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.8.2] - 2026-04-19
+
+### Fixed
+- `middleware/rtk.TrackingDBPath()` returned the wrong filename
+  (`tracking.db`) — rtk 0.37.1 actually stores its SQLite database as
+  `history.db` (verified against a running sandbox at
+  `~/.local/share/rtk/history.db`). All platform branches now return
+  `history.db`, so callers doing `os.Stat(TrackingDBPath())` get a
+  true positive when rtk has recorded any commands.
+- Updated the 3 platform-path tests to assert the corrected filename.
+
 ## [0.8.1] - 2026-04-19
 
 ### Added

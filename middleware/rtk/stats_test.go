@@ -291,15 +291,15 @@ func TestTrackingDBPath(t *testing.T) {
 	var want string
 	switch runtime.GOOS {
 	case "darwin":
-		want = "/tmp/rtkhome/Library/Application Support/rtk/tracking.db"
+		want = "/tmp/rtkhome/Library/Application Support/rtk/history.db"
 	case "windows":
-		// On windows UserHomeDir may ignore HOME. Accept anything ending with rtk/tracking.db.
-		if !strings.HasSuffix(got, filepath.Join("rtk", "tracking.db")) {
-			t.Errorf("windows path = %q, want suffix rtk/tracking.db", got)
+		// On windows UserHomeDir may ignore HOME. Accept anything ending with rtk/history.db.
+		if !strings.HasSuffix(got, filepath.Join("rtk", "history.db")) {
+			t.Errorf("windows path = %q, want suffix rtk/history.db", got)
 		}
 		return
 	default:
-		want = "/tmp/rtkhome/.local/share/rtk/tracking.db"
+		want = "/tmp/rtkhome/.local/share/rtk/history.db"
 	}
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -315,8 +315,8 @@ func TestTrackingDBPath_XDG(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TrackingDBPath: %v", err)
 	}
-	if got != "/xdg/data/rtk/tracking.db" {
-		t.Errorf("got %q, want /xdg/data/rtk/tracking.db", got)
+	if got != "/xdg/data/rtk/history.db" {
+		t.Errorf("got %q, want /xdg/data/rtk/history.db", got)
 	}
 }
 

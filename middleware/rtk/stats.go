@@ -232,11 +232,13 @@ func (e *GainError) Unwrap() error { return e.Err }
 
 // TrackingDBPath returns the platform-specific location of rtk's
 // tracking SQLite database. The path is computed; it does NOT check
-// that the file exists. Layout mirrors rtk's src/core/tracking.rs.
+// that the file exists. Layout mirrors rtk's src/core/tracking.rs,
+// which stores the SQLite file as "history.db" (verified against
+// rtk 0.37.1 on Linux at ~/.local/share/rtk/history.db).
 //
-//   macOS:   $HOME/Library/Application Support/rtk/tracking.db
-//   Linux:   $XDG_DATA_HOME/rtk/tracking.db   (falls back to $HOME/.local/share/rtk/tracking.db)
-//   Windows: %APPDATA%/rtk/tracking.db
+//   macOS:   $HOME/Library/Application Support/rtk/history.db
+//   Linux:   $XDG_DATA_HOME/rtk/history.db   (falls back to $HOME/.local/share/rtk/history.db)
+//   Windows: %APPDATA%/rtk/history.db
 //
 // Returns an empty string and an error if the home directory cannot
 // be resolved.
@@ -247,17 +249,17 @@ func TrackingDBPath() (string, error) {
 	}
 	switch runtime.GOOS {
 	case "darwin":
-		return filepath.Join(home, "Library", "Application Support", "rtk", "tracking.db"), nil
+		return filepath.Join(home, "Library", "Application Support", "rtk", "history.db"), nil
 	case "windows":
 		if ad := os.Getenv("APPDATA"); ad != "" {
-			return filepath.Join(ad, "rtk", "tracking.db"), nil
+			return filepath.Join(ad, "rtk", "history.db"), nil
 		}
-		return filepath.Join(home, "AppData", "Roaming", "rtk", "tracking.db"), nil
+		return filepath.Join(home, "AppData", "Roaming", "rtk", "history.db"), nil
 	default:
 		if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
-			return filepath.Join(xdg, "rtk", "tracking.db"), nil
+			return filepath.Join(xdg, "rtk", "history.db"), nil
 		}
-		return filepath.Join(home, ".local", "share", "rtk", "tracking.db"), nil
+		return filepath.Join(home, ".local", "share", "rtk", "history.db"), nil
 	}
 }
 
