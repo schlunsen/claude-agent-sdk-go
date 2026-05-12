@@ -348,6 +348,10 @@ type ClaudeAgentOptions struct {
 	// File checkpointing - track file changes for rewind capability
 	EnableFileCheckpointing bool `json:"enable_file_checkpointing,omitempty"`
 
+	// Session store for transcript persistence
+	SessionStore      SessionStore           `json:"-"`                             // External session store adapter
+	SessionStoreFlush *SessionStoreFlushMode `json:"session_store_flush,omitempty"` // Flush mode: "batched" (default) or "eager"
+
 	// Debug and diagnostics
 	Verbose bool `json:"-"` // Enable verbose debug logging
 
@@ -761,5 +765,20 @@ func (o *ClaudeAgentOptions) WithThinkingDisplay(display ThinkingDisplay) *Claud
 		o.Thinking = NewThinkingAdaptive()
 	}
 	o.Thinking.Display = &display
+	return o
+}
+
+// WithSessionStore sets the session store for transcript persistence.
+// The store receives mirrored transcript entries for external storage.
+func (o *ClaudeAgentOptions) WithSessionStore(store SessionStore) *ClaudeAgentOptions {
+	o.SessionStore = store
+	return o
+}
+
+// WithSessionStoreFlush sets the flush mode for the session store.
+// Use SessionStoreFlushBatched (default) for batched writes, or
+// SessionStoreFlushEager for near-real-time delivery.
+func (o *ClaudeAgentOptions) WithSessionStoreFlush(mode SessionStoreFlushMode) *ClaudeAgentOptions {
+	o.SessionStoreFlush = &mode
 	return o
 }
