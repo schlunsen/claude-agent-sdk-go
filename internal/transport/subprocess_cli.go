@@ -498,6 +498,12 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting sources: %s", joinStrings(sources, ","))
 	}
 
+	// Add include partial messages flag if enabled (enables thinking_delta stream events)
+	if t.options != nil && t.options.IncludePartialMessages {
+		args = append(args, "--include-partial-messages")
+		t.logger.Debug("Including partial messages in stream (enables thinking_delta)")
+	}
+
 	// Add include hook events flag if enabled
 	if t.options != nil && t.options.IncludeHookEvents {
 		args = append(args, "--include-hook-events")
