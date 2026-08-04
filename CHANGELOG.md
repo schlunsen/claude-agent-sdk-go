@@ -2,6 +2,30 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.10.0] - 2026-08-05
+
+### Added
+- `TaskUpdatedMessage` typed lifecycle message for `system`/`task_updated` events, with
+  `TaskID`, `Patch`, `Status` (derived defensively from `patch.status`), `SessionID`, `UUID`,
+  and an `IsTerminal()` helper (ported from Python SDK v0.2.101)
+- `TaskUpdatedStatus*` constants (`pending`, `running`, `paused`, `completed`, `failed`, `killed`)
+- `IsTerminalTaskStatus()` helper spanning both task lifecycle vocabularies
+  (`stopped` from `task_notification`, raw `killed` from `task_updated`), so consumers
+  tracking active background tasks no longer hang when a task finishes via a
+  `task_updated` patch without a corresponding `task_notification`
+
+### Fixed
+- `UnmarshalMessage` now routes `system` messages with task lifecycle subtypes
+  (`task_started`, `task_progress`, `task_notification`, `task_updated`) to their typed
+  messages — previously these only matched top-level types the CLI never emits, so they
+  surfaced as generic `SystemMessage`s (#60)
+- Pass `--include-partial-messages` flag to the CLI so `WithIncludePartialMessages(true)`
+  actually enables `StreamEvent`/`thinking_delta` streaming (#59, thanks @LuoYY)
+
+### Changed
+- Removed unused `golang.org/x/net` dependency — the SDK is stdlib-only again (#58)
+- Restored `go 1.24` directive in go.mod to keep Go 1.24 consumer support (#61)
+
 ## [0.9.0] - 2026-05-14
 
 ### Added — Python SDK Parity

@@ -17,7 +17,7 @@ import (
 
 const (
 	// SDKVersion is the version identifier for this SDK
-	SDKVersion = "0.9.0"
+	SDKVersion = "0.10.0"
 )
 
 // SubprocessCLITransport implements Transport using a Claude Code CLI subprocess.
