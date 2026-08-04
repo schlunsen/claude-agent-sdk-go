@@ -424,6 +424,35 @@ const (
 	TaskNotificationStatusStopped   = "stopped"
 )
 
+// TaskUpdatedStatus constants for statuses reported inside a task_updated patch.
+// "pending"/"running"/"paused" are non-terminal; "completed"/"failed"/"killed"
+// are terminal. Note task_updated reports the raw "killed"; the CLI maps that
+// to "stopped" only when it emits a task_notification.
+const (
+	TaskUpdatedStatusPending   = "pending"
+	TaskUpdatedStatusRunning   = "running"
+	TaskUpdatedStatusPaused    = "paused"
+	TaskUpdatedStatusCompleted = "completed"
+	TaskUpdatedStatusFailed    = "failed"
+	TaskUpdatedStatusKilled    = "killed"
+)
+
+// IsTerminalTaskStatus reports whether a task status means the task has
+// finished and should be cleared from any "active task" tracking. It spans
+// both lifecycle vocabularies: TaskNotificationMessage reports "stopped" (the
+// CLI's mapped form of a killed task) while TaskUpdatedMessage reports the raw
+// "killed". Consumers should treat the status of a TaskNotificationMessage and
+// a TaskUpdatedMessage the same way.
+func IsTerminalTaskStatus(status string) bool {
+	switch status {
+	case TaskNotificationStatusCompleted, TaskNotificationStatusFailed,
+		TaskNotificationStatusStopped, TaskUpdatedStatusKilled:
+		return true
+	default:
+		return false
+	}
+}
+
 // TaskUsage represents usage statistics for a task.
 type TaskUsage struct {
 	TotalTokens int `json:"total_tokens"`
@@ -498,6 +527,68 @@ func (m *TaskNotificationMessage) ShouldDisplayToUser() bool {
 }
 
 func (m *TaskNotificationMessage) isMessage() {}
+
+// TaskUpdatedMessage is emitted when a background task's state changes.
+//
+// The CLI emits system/task_updated events as a task moves through its
+// lifecycle. Patch carries the changed fields (e.g. "status", "end_time");
+// when the patched status is terminal (see IsTerminalTaskStatus) the task has
+// finished.
+//
+// Lifecycle note: a background task's terminal state can arrive *only* as a
+// TaskUpdatedMessage with no accompanying TaskNotificationMessage — for
+// example a task stopped via StopTask reports status "killed" here, and the
+// matching notification is sometimes suppressed. Consumers that track active
+// task IDs should therefore clear them on a terminal status (see
+// IsTerminalTaskStatus) from *either* a TaskNotificationMessage or a
+// TaskUpdatedMessage.
+type TaskUpdatedMessage struct {
+	Type      string                 `json:"type"` // "system"
+	Subtype   string                 `json:"subtype"`
+	TaskID    string                 `json:"task_id"`
+	Patch     map[string]interface{} `json:"patch,omitempty"`
+	Status    string                 `json:"-"` // Derived from Patch["status"]; empty when the patch carries no status
+	SessionID string                 `json:"session_id,omitempty"`
+	UUID      string                 `json:"uuid,omitempty"`
+}
+
+// GetMessageType returns the type of the message.
+func (m *TaskUpdatedMessage) GetMessageType() string {
+	return m.Type
+}
+
+// ShouldDisplayToUser returns false for task updated messages (internal).
+func (m *TaskUpdatedMessage) ShouldDisplayToUser() bool {
+	return false
+}
+
+func (m *TaskUpdatedMessage) isMessage() {}
+
+// IsTerminal reports whether this update marks the task as finished.
+func (m *TaskUpdatedMessage) IsTerminal() bool {
+	return IsTerminalTaskStatus(m.Status)
+}
+
+// UnmarshalJSON implements custom unmarshaling for TaskUpdatedMessage,
+// deriving Status from the patch. Parsed defensively: the patch may omit
+// status/uuid/session_id and parsing must never fail on a lifecycle event.
+func (m *TaskUpdatedMessage) UnmarshalJSON(data []byte) error {
+	type Alias TaskUpdatedMessage
+	aux := (*Alias)(m)
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	// Terminal-ness is derived from patch.status; the CLI is assumed to set it
+	// on terminal transitions. A patch that carries only end_time/result/error
+	// (no status) is left non-terminal (Status == "") — the full patch is
+	// still preserved on Patch for callers that need more.
+	if m.Patch != nil {
+		if status, ok := m.Patch["status"].(string); ok {
+			m.Status = status
+		}
+	}
+	return nil
+}
 
 // HookEventMessage is emitted when include_hook_events is enabled.
 // It provides visibility into hook lifecycle events during execution.
@@ -649,7 +740,8 @@ func (m *RateLimitEvent) isMessage() {}
 // UnmarshalMessage unmarshals a JSON message into the appropriate message type.
 func UnmarshalMessage(data []byte) (Message, error) {
 	var typeCheck struct {
-		Type string `json:"type"`
+		Type    string `json:"type"`
+		Subtype string `json:"subtype"`
 	}
 	if err := json.Unmarshal(data, &typeCheck); err != nil {
 		return nil, NewJSONDecodeErrorWithCause("failed to determine message type", string(data), err)
@@ -669,6 +761,37 @@ func UnmarshalMessage(data []byte) (Message, error) {
 		}
 		return &msg, nil
 	case "system", "control_request", "control_response":
+		// Task lifecycle events arrive from the CLI as system messages with
+		// dedicated subtypes; route them to their typed messages so consumers
+		// can track task state without inspecting raw system data.
+		if typeCheck.Type == "system" {
+			switch typeCheck.Subtype {
+			case "task_started":
+				var msg TaskStartedMessage
+				if err := json.Unmarshal(data, &msg); err != nil {
+					return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task started message", string(data), err)
+				}
+				return &msg, nil
+			case "task_progress":
+				var msg TaskProgressMessage
+				if err := json.Unmarshal(data, &msg); err != nil {
+					return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task progress message", string(data), err)
+				}
+				return &msg, nil
+			case "task_notification":
+				var msg TaskNotificationMessage
+				if err := json.Unmarshal(data, &msg); err != nil {
+					return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task notification message", string(data), err)
+				}
+				return &msg, nil
+			case "task_updated":
+				var msg TaskUpdatedMessage
+				if err := json.Unmarshal(data, &msg); err != nil {
+					return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task updated message", string(data), err)
+				}
+				return &msg, nil
+			}
+		}
 		// system, control_request, and control_response are all SystemMessage types
 		var msg SystemMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
@@ -709,6 +832,12 @@ func UnmarshalMessage(data []byte) (Message, error) {
 		var msg TaskNotificationMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task notification message", string(data), err)
+		}
+		return &msg, nil
+	case "task_updated":
+		var msg TaskUpdatedMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task updated message", string(data), err)
 		}
 		return &msg, nil
 	case "hook_event":
