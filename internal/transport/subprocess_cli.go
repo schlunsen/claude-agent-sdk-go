@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/schlunsen/claude-agent-sdk-go/internal/log"
 	"github.com/schlunsen/claude-agent-sdk-go/types"
@@ -30,10 +31,11 @@ type SubprocessCLITransport struct {
 	resumeSessionID string                    // Optional session ID to resume conversation
 	options         *types.ClaudeAgentOptions // Options for CLI configuration
 
-	cmd    *exec.Cmd
-	stdin  io.WriteCloser
-	stdout io.ReadCloser
-	stderr io.ReadCloser
+	cmd       *exec.Cmd
+	cmdWaitCh chan error // initialized in Connect
+	stdin     io.WriteCloser
+	stdout    io.ReadCloser
+	stderr    io.ReadCloser
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -163,7 +165,12 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 		t.logger.Error("Failed to start subprocess: %v", err)
 		return types.NewCLIConnectionErrorWithCause("failed to start subprocess", err)
 	}
-	t.logger.Debug("CLI subprocess started successfully (PID: %d)", t.cmd.Process.Pid)
+	t.logger.Debug("CLI subprocess started (PID: %d)", t.cmd.Process.Pid)
+
+	t.cmdWaitCh = make(chan error, 1)
+	go func() {
+		t.cmdWaitCh <- t.cmd.Wait()
+	}()
 
 	// Create JSON line writer for stdin
 	t.writer = NewJSONLineWriter(t.stdin)
@@ -172,7 +179,26 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 	go t.messageReaderLoop(t.ctx)
 
 	// Launch stderr reader for debugging
+	// If the subprocess dies immediately after cmd.Start(), the stderr hook can be used to read the error output
 	go t.readStderr(t.ctx)
+
+	// ensure that cmd.Start() didn't die immediately after being started
+	t.logger.Debug("Monitoring CLI subprocess (PID: %d) for liveness", t.cmd.Process.Pid)
+	select {
+	case waitErr := <-t.cmdWaitCh:
+		t.cmdWaitCh <- waitErr // propagate the error for Close
+		t.logger.Error("Subprocess (PID: %d) unexpectedly exited: %v", t.cmd.Process.Pid, waitErr)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return types.NewProcessErrorWithCode(
+				"subprocess exited with error",
+				exitErr.ExitCode(),
+			)
+		} else {
+			return types.NewProcessErrorWithCause("subprocess exited with error", err)
+		}
+	case <-time.After(1000 * time.Millisecond):
+		break
+	}
 
 	// Mark as ready
 	t.ready = true
@@ -599,22 +625,16 @@ func (t *SubprocessCLITransport) Close(ctx context.Context) error {
 		t.stdin = nil
 	}
 
-	// Wait for process to exit (with context timeout)
-	done := make(chan error, 1)
-	go func() {
-		done <- t.cmd.Wait()
-	}()
-
 	select {
 	case <-ctx.Done():
 		// Timeout - kill the process
 		if t.cmd.Process != nil {
 			_ = t.cmd.Process.Kill()
 		}
-		<-done // Wait for Wait() to return
+		<-t.cmdWaitCh // Wait for Wait() to return
 		return types.NewProcessError("subprocess did not exit gracefully, killed")
 
-	case err := <-done:
+	case err := <-t.cmdWaitCh:
 		// Process exited
 		if err != nil {
 			if exitErr, ok := err.(*exec.ExitError); ok {
