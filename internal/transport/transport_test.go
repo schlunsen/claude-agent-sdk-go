@@ -282,7 +282,7 @@ func TestJSONLineWriter(t *testing.T) {
 // TestSubprocessCLITransportConnect tests subprocess connection
 func TestSubprocessCLITransportConnect(t *testing.T) {
 	// Skip if no echo command available
-	echoPath, err := FindMockCLI()
+	echoPath, err := FindMockCLI(t)
 	if err != nil {
 		t.Skip("No echo command available for testing")
 	}
@@ -312,7 +312,7 @@ func TestSubprocessCLITransportConnect(t *testing.T) {
 // TestSubprocessCLITransportWrite tests writing to subprocess
 func TestSubprocessCLITransportWrite(t *testing.T) {
 	// Use cat command as a simple echo subprocess
-	catPath, err := FindMockCLI()
+	catPath, err := FindMockCLI(t)
 	if err != nil {
 		t.Skip("No cat command available for testing")
 	}
@@ -340,7 +340,7 @@ func TestSubprocessCLITransportWrite(t *testing.T) {
 
 // TestSubprocessCLITransportClose tests subprocess cleanup
 func TestSubprocessCLITransportClose(t *testing.T) {
-	echoPath, err := FindMockCLI()
+	echoPath, err := FindMockCLI(t)
 	if err != nil {
 		t.Skip("No echo command available for testing")
 	}
@@ -426,7 +426,7 @@ func TestMessageReaderLoop(t *testing.T) {
 
 // TestSubprocessEnvironment tests environment variable setup
 func TestSubprocessEnvironment(t *testing.T) {
-	echoPath, err := FindMockCLI()
+	echoPath, err := FindMockCLI(t)
 	if err != nil {
 		t.Skip("No echo command available for testing")
 	}
@@ -457,18 +457,32 @@ func TestSubprocessEnvironment(t *testing.T) {
 }
 
 // FindMockCLI finds a command suitable for testing (cat, echo, etc.)
-func FindMockCLI() (string, error) {
-	// Try to find cat command (available on Unix systems)
-	if path, err := exec.LookPath("cat"); err == nil {
-		return path, nil
+func FindMockCLI(t *testing.T) (string, error) {
+	t.Helper()
+
+	// This used to return `cat` (or `echo`) directly, which made
+	// TestSubprocessCLITransportWrite flaky. The transport launches the mock
+	// with the real CLI flags — --input-format=stream-json, --verbose, and so
+	// on — which cat rejects, so it exited immediately and a Write racing that
+	// exit failed with "write |1: broken pipe". Whether the write won the race
+	// came down to scheduling, so the test failed at random, on whichever Go
+	// version lost the coin flip that day.
+	//
+	// A stand-in for the CLI has to behave like the CLI in the one way these
+	// tests depend on: ignore its arguments and stay alive reading stdin.
+	if _, err := exec.LookPath("sh"); err != nil {
+		return "", types.NewCLINotFoundError("no suitable test command found (sh)")
 	}
 
-	// Try echo as fallback
-	if path, err := exec.LookPath("echo"); err == nil {
-		return path, nil
+	path := filepath.Join(t.TempDir(), "mock-cli")
+	script := "#!/bin/sh\n" +
+		"# Stand-in for the Claude CLI: ignore the flags the transport passes\n" +
+		"# and read stdin until EOF, so writes never race a premature exit.\n" +
+		"exec cat\n"
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		return "", err
 	}
-
-	return "", types.NewCLINotFoundError("no suitable test command found (cat or echo)")
+	return path, nil
 }
 
 // BenchmarkJSONLineReader benchmarks JSON line reading performance
