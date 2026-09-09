@@ -641,9 +641,11 @@ func TestParseContentBlock_InvalidBlocks(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			// Forward compatibility: an unrecognised type is preserved as an
+			// UnknownBlock rather than failing. See TestParseContentBlock_UnknownTypeIsPreserved.
 			name:    "unknown type",
 			input:   contentBlockUnknownType,
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name:    "malformed JSON",
@@ -706,13 +708,13 @@ func TestParseContentBlocks_Empty(t *testing.T) {
 func TestParseContentBlocks_WithError(t *testing.T) {
 	rawBlocks := []json.RawMessage{
 		json.RawMessage(`{"type": "text", "text": "Valid"}`),
-		json.RawMessage(`{"type": "invalid_type"}`),
+		json.RawMessage(`{"text": "no type field"}`), // malformed, not merely unrecognised
 		json.RawMessage(`{"type": "text", "text": "Also valid"}`),
 	}
 
 	_, err := ParseContentBlocks(rawBlocks)
 	if err == nil {
-		t.Error("expected error for invalid block, got nil")
+		t.Fatal("expected error for invalid block, got nil")
 	}
 
 	// Error should mention the index
@@ -884,4 +886,23 @@ func BenchmarkParseContentBlocks(b *testing.B) {
 // Helper function to create bool pointer
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+// TestParseContentBlock_UnknownTypeIsPreserved pins the forward-compatibility
+// contract: a block type this SDK version does not know is returned as an
+// UnknownBlock so the surrounding message still parses. Model fallback made
+// this concrete by introducing "fallback" blocks, which previously aborted
+// every assistant message that carried one.
+func TestParseContentBlock_UnknownTypeIsPreserved(t *testing.T) {
+	block, err := ParseContentBlock(contentBlockUnknownType)
+	if err != nil {
+		t.Fatalf("unknown block type must not error, got: %v", err)
+	}
+	unknown, ok := block.(*types.UnknownBlock)
+	if !ok {
+		t.Fatalf("block = %T, want *types.UnknownBlock", block)
+	}
+	if unknown.GetType() != "unknown_block_type" {
+		t.Errorf("GetType() = %q, want unknown_block_type", unknown.GetType())
+	}
 }

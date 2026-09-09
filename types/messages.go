@@ -174,12 +174,43 @@ func UnmarshalContentBlock(data []byte) (ContentBlock, error) {
 			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal server_tool_result block", string(data), err)
 		}
 		return &block, nil
+	case "":
+		// No type at all is malformed input, not a block type from a newer CLI.
+		return nil, NewMessageParseErrorWithType("content block missing type field", "")
 	default:
-		// Forward compatibility: return unknown content blocks as raw maps
-		// rather than erroring, to handle new block types from future CLI versions
-		return nil, NewMessageParseErrorWithType("unknown content block type", typeCheck.Type)
+		// Forward compatibility: an unrecognised block is preserved rather than
+		// failing the whole message. New CLI versions introduce block types the
+		// SDK has not seen yet — model fallback added "fallback", which used to
+		// abort every assistant message that carried one, discarding the text
+		// alongside it.
+		return &UnknownBlock{Type: typeCheck.Type, Raw: append(json.RawMessage(nil), data...)}, nil
 	}
 }
+
+// UnknownBlock is a content block whose type this SDK version does not know.
+// The raw JSON is kept so callers can inspect or forward it, and so a new block
+// type from a newer CLI degrades to "ignored" rather than "message dropped".
+type UnknownBlock struct {
+	Type string          `json:"type"`
+	Raw  json.RawMessage `json:"-"`
+}
+
+// GetType returns the type of the content block.
+func (u *UnknownBlock) GetType() string {
+	return u.Type
+}
+
+// MarshalJSON returns the block exactly as it arrived.
+func (u *UnknownBlock) MarshalJSON() ([]byte, error) {
+	if len(u.Raw) == 0 {
+		return json.Marshal(struct {
+			Type string `json:"type"`
+		}{Type: u.Type})
+	}
+	return u.Raw, nil
+}
+
+func (u *UnknownBlock) isContentBlock() {}
 
 // Message is an interface for all message types from Claude.
 type Message interface {
@@ -190,11 +221,15 @@ type Message interface {
 
 // UserMessage represents a message from the user.
 type UserMessage struct {
-	Type            string                 `json:"type"`
-	Content         interface{}            `json:"content"` // Can be string or []ContentBlock
-	ParentToolUseID *string                `json:"parent_tool_use_id,omitempty"`
-	UUID            *string                `json:"uuid,omitempty"`
-	ToolUseResult   map[string]interface{} `json:"tool_use_result,omitempty"`
+	Type            string      `json:"type"`
+	Content         interface{} `json:"content"` // Can be string or []ContentBlock
+	ParentToolUseID *string     `json:"parent_tool_use_id,omitempty"`
+	UUID            *string     `json:"uuid,omitempty"`
+	// ToolUseResult holds the structured form of tool_use_result. The CLI also
+	// sends this field as a bare string (a Bash failure, a <tool_use_error>);
+	// that arrives in ToolUseResultText instead. At most one is ever set.
+	ToolUseResult     map[string]interface{} `json:"tool_use_result,omitempty"`
+	ToolUseResultText *string                `json:"-"`
 }
 
 // GetMessageType returns the type of the message.
@@ -213,8 +248,9 @@ func (m *UserMessage) isMessage() {}
 func (m *UserMessage) UnmarshalJSON(data []byte) error {
 	type Alias UserMessage
 	aux := &struct {
-		Content json.RawMessage            `json:"content"`
-		Message map[string]json.RawMessage `json:"message"` // Handle nested message format from CLI
+		Content       json.RawMessage            `json:"content"`
+		Message       map[string]json.RawMessage `json:"message"` // Handle nested message format from CLI
+		ToolUseResult json.RawMessage            `json:"tool_use_result"`
 		*Alias
 	}{
 		Alias: (*Alias)(m),
@@ -222,6 +258,21 @@ func (m *UserMessage) UnmarshalJSON(data []byte) error {
 
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
+	}
+
+	// tool_use_result is a string as often as it is an object, so it is decoded
+	// here rather than by the Alias, which would fail the whole message.
+	if len(aux.ToolUseResult) > 0 && string(aux.ToolUseResult) != "null" {
+		var asMap map[string]interface{}
+		if err := json.Unmarshal(aux.ToolUseResult, &asMap); err == nil {
+			m.ToolUseResult = asMap
+		} else {
+			var asText string
+			if err := json.Unmarshal(aux.ToolUseResult, &asText); err == nil {
+				m.ToolUseResultText = &asText
+			}
+			// Any other shape (array, number) is ignored rather than fatal.
+		}
 	}
 
 	var contentRaw json.RawMessage
@@ -279,6 +330,22 @@ func (m *UserMessage) UnmarshalJSON(data []byte) error {
 type AssistantMessageError struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
+}
+
+// UnmarshalJSON accepts both the documented {"type","message"} object and the
+// bare string the CLI sends on synthetic assistant messages. Without this, a
+// string here failed the entire assistant message.
+func (e *AssistantMessageError) UnmarshalJSON(data []byte) error {
+	var asText string
+	if err := json.Unmarshal(data, &asText); err == nil {
+		e.Type = SystemSubtypeError
+		e.Message = asText
+		return nil
+	}
+
+	type Alias AssistantMessageError
+	aux := (*Alias)(e)
+	return json.Unmarshal(data, aux)
 }
 
 // AssistantMessage represents a message from Claude assistant.
