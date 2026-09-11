@@ -3,6 +3,7 @@ package claude
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -222,7 +223,13 @@ func (c *Client) Connect(ctx context.Context) error {
 
 	// Initialize control protocol
 	if _, err := c.query.Initialize(ctx); err != nil {
-		c.logger.Error("Failed to initialize control protocol: %v", err)
+		if errors.Is(ctx.Err(), context.Canceled) {
+			// The caller cancelled the connect (for example the session was
+			// closed or interrupted while starting) — expected, not a failure.
+			c.logger.Info("Connection cancelled during control protocol initialization")
+		} else {
+			c.logger.Error("Failed to initialize control protocol: %v", err)
+		}
 		_ = c.query.Stop(ctx)
 		_ = c.transport.Close(ctx)
 		return types.NewControlProtocolErrorWithCause("failed to initialize control protocol", err)

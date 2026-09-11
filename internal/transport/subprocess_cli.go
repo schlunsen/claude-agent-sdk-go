@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -181,6 +182,17 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 	return nil
 }
 
+// maxBufferSize returns the largest CLI output line the transport accepts:
+// ClaudeAgentOptions.MaxBufferSize when set, DefaultMaxBufferSize otherwise.
+// (The option existed before but nothing read it, so WithMaxBufferSize had no
+// effect.)
+func (t *SubprocessCLITransport) maxBufferSize() int {
+	if t.options != nil && t.options.MaxBufferSize != nil && *t.options.MaxBufferSize > 0 {
+		return *t.options.MaxBufferSize
+	}
+	return DefaultMaxBufferSize
+}
+
 // messageReaderLoop reads JSON lines from stdout and parses them into messages.
 // It runs in a goroutine and sends messages to the messages channel.
 // It respects context cancellation and closes the messages channel when done.
@@ -188,7 +200,7 @@ func (t *SubprocessCLITransport) messageReaderLoop(ctx context.Context) {
 	defer close(t.messages)
 
 	t.logger.Debug("Message reader loop started")
-	reader := NewJSONLineReader(t.stdout)
+	reader := NewJSONLineReaderWithSize(t.stdout, t.maxBufferSize())
 
 	for {
 		// Check for context cancellation
@@ -206,6 +218,16 @@ func (t *SubprocessCLITransport) messageReaderLoop(ctx context.Context) {
 				t.logger.Debug("Message reader loop stopped: EOF from CLI")
 				// Normal end of stream
 				return
+			}
+
+			var tooLong *LineTooLongError
+			if errors.As(err, &tooLong) {
+				// The oversized line has been consumed, so the stream is still
+				// usable: lose this one message rather than the session. It is
+				// logged but not stored as the transport error, which is
+				// reserved for failures of the transport itself.
+				t.logger.Warning("Dropped a %d-byte message from CLI stdout: it exceeds the %d-byte limit (raise it with WithMaxBufferSize)", tooLong.Size, tooLong.MaxSize)
+				continue
 			}
 
 			t.logger.Error("Failed to read from CLI stdout: %v", err)
@@ -617,6 +639,10 @@ func (t *SubprocessCLITransport) Close(ctx context.Context) error {
 	case err := <-done:
 		// Process exited
 		if err != nil {
+			if t.ctx != nil && t.ctx.Err() != nil && isShutdownByCancel(err) {
+				t.logger.Debug("CLI subprocess stopped by close: %v", err)
+				return nil
+			}
 			if exitErr, ok := err.(*exec.ExitError); ok {
 				return types.NewProcessErrorWithCode(
 					"subprocess exited with error",
@@ -627,6 +653,21 @@ func (t *SubprocessCLITransport) Close(ctx context.Context) error {
 		}
 		return nil
 	}
+}
+
+// isShutdownByCancel reports whether a Wait error is the expected result of
+// cancelling the command's context. The CLI runs under exec.CommandContext and
+// Close cancels that context before waiting, so Close kills the CLI itself:
+// Wait then reports a signal death (ExitCode -1), or, if the CLI had exited on
+// its own a moment earlier, the context error. Reporting either used to log
+// "subprocess exited with error (exit code: -1)" on every normal close. A real
+// failure, such as a non-zero exit status, is still reported.
+func isShutdownByCancel(err error) bool {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode() == -1
+	}
+	return errors.Is(err, context.Canceled)
 }
 
 // OnError stores an error that occurred during transport operation.
@@ -709,7 +750,7 @@ func (t *SubprocessCLITransport) readStderr(ctx context.Context) {
 		}()
 	}
 
-	reader := NewJSONLineReader(t.stderr)
+	reader := NewJSONLineReaderWithSize(t.stderr, t.maxBufferSize())
 	for {
 		select {
 		case <-ctx.Done():
@@ -719,6 +760,13 @@ func (t *SubprocessCLITransport) readStderr(ctx context.Context) {
 
 		line, err := reader.ReadLine()
 		if err != nil {
+			var tooLong *LineTooLongError
+			if errors.As(err, &tooLong) {
+				// Skip the oversized line instead of abandoning stderr, which
+				// would also silently switch off session-not-found detection.
+				t.logger.Warning("Dropped a %d-byte line from CLI stderr: it exceeds the %d-byte limit", tooLong.Size, tooLong.MaxSize)
+				continue
+			}
 			return
 		}
 
