@@ -2,6 +2,18 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.11.1] - 2026-09-11
+
+### Fixed
+- The message stream now ends when the CLI exits on its own (a crash, an OOM kill, a killed
+  process). Only `Stop` used to close it, so `ReceiveResponse` blocked forever after a CLI
+  crash and a consumer had no way to notice the CLI was gone (#68)
+
+### Internal
+- `middleware/rtk`: tagged switch, the one finding under golangci-lint v2 (#67)
+- CI: `actions/setup-go` 4 → 7 (#48), `actions/cache` 3 → 6 (#44),
+  `golangci/golangci-lint-action` 3 → 9, which moves the Lint job to golangci-lint v2 (#45)
+
 ## [0.11.0] - 2026-09-11
 
 ### Fixed
