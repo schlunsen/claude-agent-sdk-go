@@ -41,6 +41,7 @@ type Query struct {
 
 	// Message handling
 	messagesChan     chan types.Message
+	messagesOnce     sync.Once // closes messagesChan exactly once
 	stopChan         chan struct{}
 	readLoopDone     chan struct{}
 	started          bool
@@ -236,8 +237,8 @@ func (q *Query) Stop(ctx context.Context) error {
 		return ctx.Err()
 	}
 
-	// Close message channel
-	close(q.messagesChan)
+	// messageLoop closed the channel on its way out, so this is normally a no-op.
+	q.closeMessages()
 
 	return nil
 }
@@ -247,9 +248,20 @@ func (q *Query) GetMessages(ctx context.Context) <-chan types.Message {
 	return q.messagesChan
 }
 
+// closeMessages closes the consumer channel exactly once.
+func (q *Query) closeMessages() {
+	q.messagesOnce.Do(func() { close(q.messagesChan) })
+}
+
 // messageLoop reads messages from transport and routes them.
 func (q *Query) messageLoop() {
 	defer close(q.readLoopDone)
+	// Close the consumer channel however the loop ends, including when the CLI
+	// exits on its own. Only Stop used to close it, so after a CLI crash
+	// ReceiveResponse blocked forever and a consumer had no way to notice the
+	// CLI was gone. routeMessage, the channel's only sender, runs on this
+	// goroutine, so nothing can send after the close.
+	defer q.closeMessages()
 
 	messages := q.transport.ReadMessages(q.ctx)
 	q.logger.Debug("Message routing loop started")
