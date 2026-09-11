@@ -156,8 +156,8 @@ func (c *config) rewriteSegment(seg string) (string, bool) {
 	}
 
 	var rebuilt string
-	switch {
-	case before == "":
+	switch before {
+	case "":
 		rebuilt = prefix + " " + rest
 	default:
 		rebuilt = before + " " + prefix + " " + rest
