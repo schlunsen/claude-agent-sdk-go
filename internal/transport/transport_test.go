@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -215,23 +216,19 @@ func TestJSONLineReader(t *testing.T) {
 	}
 }
 
-// TestJSONLineReaderBufferOverflow tests buffer size limits
+// TestJSONLineReaderBufferOverflow verifies a line over the limit is rejected
+// with *LineTooLongError. It used to accept either outcome ("the scanner may or
+// may not fail"), which is how a fatal overflow shipped with a passing test.
 func TestJSONLineReaderBufferOverflow(t *testing.T) {
-	// Create a JSON line larger than the buffer
-	// Note: bufio.Scanner needs significantly larger input to trigger the error
 	smallBufferSize := 1024
 	largeJSON := `{"data":"` + strings.Repeat("x", smallBufferSize*2) + `"}`
 
 	reader := NewJSONLineReaderWithSize(strings.NewReader(largeJSON+"\n"), smallBufferSize)
 
 	_, err := reader.ReadLine()
-	// The scanner may or may not fail depending on internal buffering
-	// We just verify that if there's an error, it's handled correctly
-	if err != nil {
-		t.Logf("ReadLine() error (expected for large buffer): %v", err)
-	} else {
-		// For smaller sizes, the scanner may succeed by growing the buffer
-		t.Logf("ReadLine() succeeded (scanner grew buffer)")
+	var tooLong *LineTooLongError
+	if !errors.As(err, &tooLong) {
+		t.Fatalf("ReadLine() error = %v, want *LineTooLongError", err)
 	}
 }
 

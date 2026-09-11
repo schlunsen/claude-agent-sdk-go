@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"sync"
@@ -183,7 +184,12 @@ func (q *Query) Initialize(ctx context.Context) (map[string]interface{}, error) 
 
 	result, err := q.sendControlRequest(ctx, request)
 	if err != nil {
-		q.logger.Error("Control protocol initialization failed: %v", err)
+		if errors.Is(ctx.Err(), context.Canceled) {
+			// Cancelled by the caller while connecting; Client.Connect reports it.
+			q.logger.Debug("Control protocol initialization cancelled")
+		} else {
+			q.logger.Error("Control protocol initialization failed: %v", err)
+		}
 		return nil, types.NewControlProtocolErrorWithCause("initialization failed", err)
 	}
 
