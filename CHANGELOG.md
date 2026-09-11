@@ -2,6 +2,36 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.11.0] - 2026-09-11
+
+### Fixed
+- A CLI stdout line over the buffer limit no longer ends the session. The reader was built
+  on `bufio.Scanner`, which stops for good after one oversized line; the oversized message
+  is now dropped with a warning and reading continues. The stderr reader, which gave up
+  silently on any error (disabling session-not-found detection), recovers the same way (#65)
+- `WithMaxBufferSize` now takes effect — the transport always used the default before (#65)
+- `Close` no longer reports its own shutdown as `subprocess exited with error (exit code: -1)`;
+  a genuine non-zero exit is still reported (#65)
+- A `Connect` cancelled by the caller during initialization is no longer logged as two
+  ERRORs; the error is still returned (#65)
+- A `tool_use_result` sent as a string (a Bash failure, a `<tool_use_error>`, a denied
+  permission) no longer fails the whole user message (#63)
+- An `error` sent as a string on synthetic assistant messages no longer fails the message (#63)
+- Flaky `TestSubprocessCLITransportWrite`: the mock CLI now ignores its arguments and stays
+  alive on stdin instead of exiting before the test writes (#64)
+
+### Added
+- `UnknownBlock` content block: block types this SDK version does not know (for example the
+  `fallback` blocks from model fallback) are preserved with their raw JSON instead of
+  failing the message they arrive in (#63)
+- `UserMessage.ToolUseResultText` carries the string form of `tool_use_result` (#63)
+
+### Changed
+- `DefaultMaxBufferSize` raised from 1MB to 32MB; single lines of 4-5MB (image and
+  attachment tool results) are ordinary (#65)
+- An unrecognised content block type is no longer a parse error; a block with no `type`
+  field still is (#63)
+
 ## [0.10.0] - 2026-08-05
 
 ### Added
