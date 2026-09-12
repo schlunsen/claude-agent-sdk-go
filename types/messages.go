@@ -446,6 +446,43 @@ type SystemMessage struct {
 	RequestID string                 `json:"request_id,omitempty"` // For control_request/control_response messages (top-level field)
 }
 
+// UnmarshalJSON keeps the fields a system message carries outside the known
+// ones. The CLI puts a subtype's payload at the top level rather than inside
+// "data" — an api_retry reports attempt, max_retries, error_status and error
+// that way — and those were silently dropped, so a consumer could see that a
+// retry happened but not why. Unknown keys are merged into Data, without
+// overwriting anything an explicit "data" object provides.
+func (m *SystemMessage) UnmarshalJSON(data []byte) error {
+	type Alias SystemMessage
+	aux := (*Alias)(m)
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	known := map[string]bool{"type": true, "subtype": true, "data": true, "response": true, "request": true, "request_id": true}
+	for key, value := range raw {
+		if known[key] {
+			continue
+		}
+		var decoded interface{}
+		if err := json.Unmarshal(value, &decoded); err != nil {
+			continue // a field this SDK cannot decode is skipped, never fatal
+		}
+		if m.Data == nil {
+			m.Data = map[string]interface{}{}
+		}
+		if _, exists := m.Data[key]; !exists {
+			m.Data[key] = decoded
+		}
+	}
+	return nil
+}
+
 // GetMessageType returns the type of the message.
 func (m *SystemMessage) GetMessageType() string {
 	return m.Type
