@@ -2,6 +2,15 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.11.2] - 2026-09-12
+
+### Fixed
+- `SystemMessage` keeps the fields a subtype carries outside the known ones. The CLI puts
+  them at the top level rather than inside `data` — an `api_retry` reports `attempt`,
+  `max_retries`, `error_status` and `error` that way — and they were dropped, so a consumer
+  could see that a retry had happened but not why. Unknown top-level keys are merged into
+  `Data`; an explicit `data` object still wins (#70)
+
 ## [0.11.1] - 2026-09-11
 
 ### Fixed
