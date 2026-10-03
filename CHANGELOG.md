@@ -2,6 +2,20 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [Unreleased]
+
+### Added
+- `ClaudeAgentOptions.VerbatimPrompts` / `WithVerbatimPrompts`: user messages are delivered
+  to the CLI exactly as written, with no `@path` file expansion and no slash-command dispatch,
+  so untrusted text inlined into a prompt can't trigger file reads or commands. Applies to
+  `Query`, `Client.Query` and `Client.QueryWithContent`. Requires Claude Code CLI 2.1.248+;
+  older CLIs ignore it (matches Python SDK v0.2.158)
+
+### Fixed
+- `SystemPromptPreset.ExcludeDynamicSections` is now sent to the CLI. The field existed but was
+  never forwarded, so setting it had no effect. It now goes in the `initialize` request as
+  `excludeDynamicSections`, as in the Python SDK
+
 ## [0.11.2] - 2026-09-12
 
 ### Fixed

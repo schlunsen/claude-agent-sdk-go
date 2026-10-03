@@ -292,6 +292,8 @@ func (c *Client) Query(ctx context.Context, prompt string) error {
 		"session_id":         "default",
 	}
 
+	internal.StampUserMessage(queryMsg, c.options.VerbatimPrompts)
+
 	// Marshal and send
 	data, err := json.Marshal(queryMsg)
 	if err != nil {
@@ -362,6 +364,8 @@ func (c *Client) QueryWithContent(ctx context.Context, content interface{}) erro
 		"parent_tool_use_id": nil,
 		"session_id":         "default",
 	}
+
+	internal.StampUserMessage(queryMsg, c.options.VerbatimPrompts)
 
 	// Marshal and send
 	data, err := json.Marshal(queryMsg)
