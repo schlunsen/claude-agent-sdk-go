@@ -68,7 +68,11 @@ type SystemPromptPreset struct {
 	Type                   string  `json:"type"`   // "preset"
 	Preset                 string  `json:"preset"` // "claude_code"
 	Append                 *string `json:"append,omitempty"`
-	ExcludeDynamicSections *bool   `json:"exclude_dynamic_sections,omitempty"` // Strip per-user dynamic sections for cross-user prompt caching
+	// ExcludeDynamicSections strips per-user dynamic sections from the preset
+	// prompt for cross-user prompt caching. It is sent in the initialize
+	// request, so it takes effect with Client only; one-shot Query does not
+	// run the initialize handshake and ignores it.
+	ExcludeDynamicSections *bool `json:"exclude_dynamic_sections,omitempty"`
 }
 
 // SystemPromptFile represents a file-based system prompt configuration.

@@ -12,9 +12,10 @@ All notable changes to the Claude Agent SDK for Go are documented in this file.
   older CLIs ignore it (matches Python SDK v0.2.158)
 
 ### Fixed
-- `SystemPromptPreset.ExcludeDynamicSections` is now sent to the CLI. The field existed but was
-  never forwarded, so setting it had no effect. It now goes in the `initialize` request as
-  `excludeDynamicSections`, as in the Python SDK
+- `SystemPromptPreset.ExcludeDynamicSections` is now sent to the CLI when using `Client`. The
+  field existed but was never forwarded, so setting it had no effect. It now goes in the
+  `initialize` request as `excludeDynamicSections`, as in the Python SDK. One-shot `Query`
+  doesn't run the initialize handshake yet, so it still ignores the field
 
 ## [0.11.2] - 2026-09-12
 
