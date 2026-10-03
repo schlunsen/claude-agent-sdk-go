@@ -65,9 +65,9 @@ func NewSubagentExecutionConfig() *SubagentExecutionConfig {
 
 // SystemPromptPreset represents a preset system prompt configuration.
 type SystemPromptPreset struct {
-	Type                   string  `json:"type"`   // "preset"
-	Preset                 string  `json:"preset"` // "claude_code"
-	Append                 *string `json:"append,omitempty"`
+	Type   string  `json:"type"`   // "preset"
+	Preset string  `json:"preset"` // "claude_code"
+	Append *string `json:"append,omitempty"`
 	// ExcludeDynamicSections strips per-user dynamic sections from the preset
 	// prompt for cross-user prompt caching. It is sent in the initialize
 	// request, so it takes effect with Client only; one-shot Query does not
