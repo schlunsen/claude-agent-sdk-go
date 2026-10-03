@@ -39,6 +39,10 @@ type Query struct {
 	// Agent definitions (sent via initialize control protocol)
 	agents map[string]types.AgentDefinition
 
+	// excludeDynamicSections comes from a SystemPromptPreset and is sent via
+	// initialize; nil leaves the CLI default.
+	excludeDynamicSections *bool
+
 	// Message handling
 	messagesChan     chan types.Message
 	messagesOnce     sync.Once // closes messagesChan exactly once
@@ -78,9 +82,36 @@ func NewQuery(ctx context.Context, transport transport.Transport, opts *types.Cl
 		q.canUseTool = opts.CanUseTool
 		q.hooks = opts.Hooks
 		q.agents = opts.Agents
+		q.excludeDynamicSections = presetExcludeDynamicSections(opts.SystemPrompt)
 	}
 
 	return q
+}
+
+// presetExcludeDynamicSections returns the ExcludeDynamicSections flag of a
+// SystemPromptPreset (by value or pointer), or nil for any other system prompt.
+func presetExcludeDynamicSections(systemPrompt interface{}) *bool {
+	switch sp := systemPrompt.(type) {
+	case types.SystemPromptPreset:
+		return sp.ExcludeDynamicSections
+	case *types.SystemPromptPreset:
+		if sp != nil {
+			return sp.ExcludeDynamicSections
+		}
+	}
+	return nil
+}
+
+// StampUserMessage applies ClaudeAgentOptions.VerbatimPrompts to an outgoing
+// user message. When verbatim is true it sets "client_composed" to true
+// (overwriting any caller-supplied value) so the CLI delivers the text as
+// written, with no @path expansion and no slash-command dispatch. The message
+// is modified in place and returned.
+func StampUserMessage(msg map[string]interface{}, verbatim bool) map[string]interface{} {
+	if verbatim {
+		msg["client_composed"] = true
+	}
+	return msg
 }
 
 // Initialize sends initialization control request if in streaming mode.
@@ -132,6 +163,9 @@ func (q *Query) Initialize(ctx context.Context) (map[string]interface{}, error) 
 	}
 	if len(hooksConfig) > 0 {
 		request["hooks"] = hooksConfig
+	}
+	if q.excludeDynamicSections != nil {
+		request["excludeDynamicSections"] = *q.excludeDynamicSections
 	}
 
 	// Send agents via control protocol (matching Python/TypeScript SDK behavior)

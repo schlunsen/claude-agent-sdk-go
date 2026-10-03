@@ -145,6 +145,8 @@ func Query(ctx context.Context, prompt string, options *types.ClaudeAgentOptions
 		"session_id":         sessionID,
 	}
 
+	internal.StampUserMessage(queryMsg, options.VerbatimPrompts)
+
 	// Marshal and send
 	data, err := json.Marshal(queryMsg)
 	if err != nil {

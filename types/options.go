@@ -65,10 +65,14 @@ func NewSubagentExecutionConfig() *SubagentExecutionConfig {
 
 // SystemPromptPreset represents a preset system prompt configuration.
 type SystemPromptPreset struct {
-	Type                   string  `json:"type"`   // "preset"
-	Preset                 string  `json:"preset"` // "claude_code"
-	Append                 *string `json:"append,omitempty"`
-	ExcludeDynamicSections *bool   `json:"exclude_dynamic_sections,omitempty"` // Strip per-user dynamic sections for cross-user prompt caching
+	Type   string  `json:"type"`   // "preset"
+	Preset string  `json:"preset"` // "claude_code"
+	Append *string `json:"append,omitempty"`
+	// ExcludeDynamicSections strips per-user dynamic sections from the preset
+	// prompt for cross-user prompt caching. It is sent in the initialize
+	// request, so it takes effect with Client only; one-shot Query does not
+	// run the initialize handshake and ignores it.
+	ExcludeDynamicSections *bool `json:"exclude_dynamic_sections,omitempty"`
 }
 
 // SystemPromptFile represents a file-based system prompt configuration.
@@ -335,6 +339,12 @@ type ClaudeAgentOptions struct {
 
 	// Skills to enable for the main session ("all" or specific skill names)
 	Skills interface{} `json:"skills,omitempty"` // Can be []string or "all"
+
+	// VerbatimPrompts delivers user messages to the CLI exactly as written:
+	// no @path file expansion and no slash-command dispatch. Enable it when
+	// prompts may contain untrusted text. Requires Claude Code CLI 2.1.248+;
+	// older CLIs ignore it.
+	VerbatimPrompts bool `json:"verbatim_prompts,omitempty"`
 
 	// Include hook lifecycle events in message stream (for debugging hooks)
 	IncludeHookEvents bool `json:"include_hook_events,omitempty"`
@@ -734,6 +744,14 @@ func (o *ClaudeAgentOptions) WithAllowDangerouslySkipPermissions(allow bool) *Cl
 // WithTaskBudget sets the task budget for token-aware execution.
 func (o *ClaudeAgentOptions) WithTaskBudget(budget *TaskBudget) *ClaudeAgentOptions {
 	o.TaskBudget = budget
+	return o
+}
+
+// WithVerbatimPrompts sets whether user messages are delivered to the CLI
+// exactly as written, with no @path file expansion and no slash-command
+// dispatch. Requires Claude Code CLI 2.1.248+.
+func (o *ClaudeAgentOptions) WithVerbatimPrompts(verbatim bool) *ClaudeAgentOptions {
+	o.VerbatimPrompts = verbatim
 	return o
 }
 
