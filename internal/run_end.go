@@ -158,15 +158,21 @@ func (r *runTracker) observe(msg types.Message) (hide bool) {
 }
 
 // settleTask clears a finished task. Once the last tracked agent settles, the
-// wait between turns starts over.
+// wait between turns starts over, or, if the CLI already reported "idle" after
+// a result, the run is over: "idle" means no further turn is owed.
 func (r *runTracker) settleTask(taskID string) {
 	if _, ok := r.inflight[taskID]; !ok {
 		return
 	}
 	delete(r.inflight, taskID)
-	if len(r.inflight) == 0 {
-		r.rearmCeilingBetweenTurns()
+	if len(r.inflight) > 0 {
+		return
 	}
+	if r.resultReceived && r.sessionState == sessionStateIdle {
+		r.endRun()
+		return
+	}
+	r.rearmCeilingBetweenTurns()
 }
 
 // onMainTurnActivity: a main-thread turn is under way, so the ceiling stops
@@ -274,6 +280,12 @@ func (r *runTracker) finish() {
 	r.endRun()
 }
 
+func (r *runTracker) isBidirectional() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.bidirectional
+}
+
 // endedChan returns the channel closed when the current run ends.
 func (r *runTracker) endedChan() <-chan struct{} {
 	r.mu.Lock()
@@ -282,7 +294,7 @@ func (r *runTracker) endedChan() <-chan struct{} {
 }
 
 // WaitForRunEndAndEndInput closes stdin once the run is over. With hooks,
-// CanUseTool or SDK MCP servers configured it first waits for the CLI to report
+// CanUseTool or SDK MCP servers (AddMCPServer) configured it first waits for the CLI to report
 // "idle" after a result (or, from a CLI that reports no session state, for the
 // first result with no tracked background agent in flight); between turns the
 // wait is bounded by CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS. Without them stdin
@@ -290,7 +302,7 @@ func (r *runTracker) endedChan() <-chan struct{} {
 // exits on its own. Returns ctx.Err() if ctx ends or the query stops first,
 // leaving stdin open.
 func (q *Query) WaitForRunEndAndEndInput(ctx context.Context) error {
-	if q.run.bidirectional {
+	if q.run.isBidirectional() {
 		q.logger.Debug("Waiting for the run to end before closing stdin")
 		select {
 		case <-q.run.endedChan():

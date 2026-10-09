@@ -48,6 +48,8 @@ type SubprocessCLITransport struct {
 
 	// Writer for stdin
 	writer *JSONLineWriter
+	// inputEnded is set once EndInput closed stdin
+	inputEnded bool
 
 	// Error tracking
 	mu    sync.Mutex
@@ -289,6 +291,10 @@ func (t *SubprocessCLITransport) Write(ctx context.Context, data string) error {
 		return types.NewCLIConnectionError("transport is not ready for writing")
 	}
 
+	if t.inputEnded {
+		return types.NewCLIConnectionError("cannot write to CLI: stdin was closed by EndInput")
+	}
+
 	if t.writer == nil {
 		return types.NewCLIConnectionError("stdin writer not initialized")
 	}
@@ -321,6 +327,7 @@ func (t *SubprocessCLITransport) EndInput(ctx context.Context) error {
 	err := t.stdin.Close()
 	t.stdin = nil
 	t.writer = nil
+	t.inputEnded = true
 	if err != nil {
 		return types.NewCLIConnectionErrorWithCause("failed to close subprocess stdin", err)
 	}

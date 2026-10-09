@@ -168,9 +168,9 @@ func Query(ctx context.Context, prompt string, options *types.ClaudeAgentOptions
 	}
 
 	// Close stdin once the run is over, so the CLI exits when it is done.
-	// With hooks, CanUseTool or SDK MCP servers this waits for the CLI to
-	// report the session idle, since follow-up turns may still need to send
-	// control requests; otherwise stdin closes now.
+	// With hooks or CanUseTool this waits for the CLI to report the session
+	// idle, since follow-up turns may still send control requests that need
+	// a reply; otherwise stdin closes now.
 	go func() {
 		if err := queryHandler.WaitForRunEndAndEndInput(ctx); err != nil && ctx.Err() == nil {
 			logger.Debug("Failed to end CLI input: %v", err)

@@ -185,6 +185,23 @@ func TestRunInflightAgentKeepsRunOpen(t *testing.T) {
 	}
 }
 
+// "idle" can come before the last agent's terminal frame; the run ends when
+// the agent settles, since "idle" means no further turn is owed.
+func TestRunIdleThenAgentSettles(t *testing.T) {
+	r := newRunTracker(true, 0)
+	r.observe(&types.TaskStartedMessage{Type: "task_started", TaskID: "a1", TaskType: "local_agent"})
+	r.observe(sessionState("running", true))
+	r.observe(resultMsg())
+	r.observe(sessionState("idle", true))
+	if isEnded(r) {
+		t.Fatal("run ended with a background agent in flight")
+	}
+	r.observe(&types.TaskNotificationMessage{Type: "task_notification", TaskID: "a1", Status: "completed"})
+	if !isEnded(r) {
+		t.Fatal("run not ended once the agent settled after idle")
+	}
+}
+
 func TestRunTaskUpdatedTerminalSettles(t *testing.T) {
 	r := newRunTracker(true, time.Minute)
 	r.observe(&types.TaskStartedMessage{Type: "task_started", TaskID: "a1", TaskType: "local_workflow"})

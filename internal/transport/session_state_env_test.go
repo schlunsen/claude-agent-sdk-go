@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -96,8 +97,8 @@ func TestEndInputLetsCLIExit(t *testing.T) {
 	if err := tr.EndInput(ctx); err != nil {
 		t.Fatalf("second EndInput: %v", err)
 	}
-	if err := tr.Write(ctx, `{"type":"system"}`); err == nil {
-		t.Error("Write after EndInput succeeded")
+	if err := tr.Write(ctx, `{"type":"system"}`); err == nil || !strings.Contains(err.Error(), "EndInput") {
+		t.Errorf("Write after EndInput: err = %v, want an end-of-input error", err)
 	}
 
 	msgs := tr.ReadMessages(ctx)
