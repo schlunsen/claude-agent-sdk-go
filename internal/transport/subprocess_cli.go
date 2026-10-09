@@ -18,7 +18,7 @@ import (
 
 const (
 	// SDKVersion is the version identifier for this SDK
-	SDKVersion = "0.12.0"
+	SDKVersion = "0.13.0"
 
 	// SDKReadsSessionStateEnv asks the CLI for session_state_changed frames
 	// marked sdk_host_only, which Query reads to tell when a run is over.
