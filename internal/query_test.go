@@ -17,6 +17,7 @@ type mockTransport struct {
 	messagesChan   chan types.Message
 	writtenData    []string
 	closed         bool
+	inputEnded     bool
 	ready          bool
 	err            error
 	onErrorHandler func(error)
@@ -53,6 +54,19 @@ func (m *mockTransport) Write(ctx context.Context, data string) error {
 	defer m.mu.Unlock()
 	m.writtenData = append(m.writtenData, data)
 	return nil
+}
+
+func (m *mockTransport) EndInput(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.inputEnded = true
+	return nil
+}
+
+func (m *mockTransport) isInputEnded() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.inputEnded
 }
 
 func (m *mockTransport) ReadMessages(ctx context.Context) <-chan types.Message {

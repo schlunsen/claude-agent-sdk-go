@@ -21,9 +21,15 @@ import (
 //   - Automatically cleans up resources when done
 //
 // The returned channel is read-only and will be closed when:
-//   - All messages have been received (including the final ResultMessage)
+//   - The CLI has finished the run and exited
 //   - An error occurs
 //   - The context is cancelled
+//
+// A ResultMessage ends a turn, not necessarily the run: a background subagent
+// can wake the session for follow-up turns, whose messages (and their own
+// ResultMessage) arrive after the first one. The CLI bounds how long it waits
+// for background work with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS (10 minutes by
+// default).
 //
 // Error handling:
 //   - Connection errors are returned immediately
@@ -161,6 +167,16 @@ func Query(ctx context.Context, prompt string, options *types.ClaudeAgentOptions
 		return nil, err
 	}
 
+	// Close stdin once the run is over, so the CLI exits when it is done.
+	// With hooks or CanUseTool this waits for the CLI to report the session
+	// idle, since follow-up turns may still send control requests that need
+	// a reply; otherwise stdin closes now.
+	go func() {
+		if err := queryHandler.WaitForRunEndAndEndInput(ctx); err != nil && ctx.Err() == nil {
+			logger.Debug("Failed to end CLI input: %v", err)
+		}
+	}()
+
 	// Create output channel for user
 	outputChan := make(chan types.Message, 10)
 
@@ -180,17 +196,14 @@ func Query(ctx context.Context, prompt string, options *types.ClaudeAgentOptions
 				return
 			case msg, ok := <-messagesChan:
 				if !ok {
-					// Messages channel closed
+					// The CLI exited: the run is over
 					return
 				}
 
-				// Forward message to output
+				// Forward message to output. A result does not end the
+				// stream: follow-up turns may still come (see above).
 				select {
 				case outputChan <- msg:
-					// Check if this is a result message (end of query)
-					if _, isResult := msg.(*types.ResultMessage); isResult {
-						return
-					}
 				case <-ctx.Done():
 					return
 				}

@@ -19,6 +19,10 @@ import (
 const (
 	// SDKVersion is the version identifier for this SDK
 	SDKVersion = "0.12.0"
+
+	// SDKReadsSessionStateEnv asks the CLI for session_state_changed frames
+	// marked sdk_host_only, which Query reads to tell when a run is over.
+	SDKReadsSessionStateEnv = "CLAUDE_CODE_SDK_READS_SESSION_STATE"
 )
 
 // SubprocessCLITransport implements Transport using a Claude Code CLI subprocess.
@@ -44,6 +48,8 @@ type SubprocessCLITransport struct {
 
 	// Writer for stdin
 	writer *JSONLineWriter
+	// inputEnded is set once EndInput closed stdin
+	inputEnded bool
 
 	// Error tracking
 	mu    sync.Mutex
@@ -139,6 +145,15 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 	for key, value := range t.env {
 		t.cmd.Env = append(t.cmd.Env, fmt.Sprintf("%s=%s", key, value))
 		t.logger.Debug("Setting custom environment variable: %s=%s", key, value)
+	}
+
+	// Ask the CLI for the session_state_changed frames marked sdk_host_only.
+	// Query reads them to tell when a run is over before closing stdin, and
+	// keeps them out of the caller's stream. A caller who sets the variable
+	// chooses for themselves; CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS stays the
+	// caller's own opt-in to seeing the frames. CLIs that predate it send none.
+	if !t.envHas(SDKReadsSessionStateEnv) {
+		t.cmd.Env = append(t.cmd.Env, SDKReadsSessionStateEnv+"=1")
 	}
 
 	// Set up pipes
@@ -276,6 +291,10 @@ func (t *SubprocessCLITransport) Write(ctx context.Context, data string) error {
 		return types.NewCLIConnectionError("transport is not ready for writing")
 	}
 
+	if t.inputEnded {
+		return types.NewCLIConnectionError("cannot write to CLI: stdin was closed by EndInput")
+	}
+
 	if t.writer == nil {
 		return types.NewCLIConnectionError("stdin writer not initialized")
 	}
@@ -291,6 +310,45 @@ func (t *SubprocessCLITransport) Write(ctx context.Context, data string) error {
 	}
 
 	return nil
+}
+
+// EndInput closes stdin so the CLI sees the end of its input. The process keeps
+// running: it finishes the turn and any background work, then exits on its
+// own, which closes the message channel. Later writes fail. Calling it again,
+// or after Close, does nothing.
+func (t *SubprocessCLITransport) EndInput(ctx context.Context) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.stdin == nil {
+		return nil
+	}
+	t.logger.Debug("Closing CLI stdin (end of input)")
+	err := t.stdin.Close()
+	t.stdin = nil
+	t.writer = nil
+	t.inputEnded = true
+	if err != nil {
+		return types.NewCLIConnectionErrorWithCause("failed to close subprocess stdin", err)
+	}
+	return nil
+}
+
+// envHas reports whether the CLI's environment gets key from either the
+// inherited environment or the configured env. Keys compare case-insensitively,
+// as Windows environments do.
+func (t *SubprocessCLITransport) envHas(key string) bool {
+	for _, envVar := range os.Environ() {
+		if k, _, ok := strings.Cut(envVar, "="); ok && strings.EqualFold(k, key) {
+			return true
+		}
+	}
+	for k := range t.env {
+		if strings.EqualFold(k, key) {
+			return true
+		}
+	}
+	return false
 }
 
 // ReadMessages returns a channel of incoming messages from the subprocess.

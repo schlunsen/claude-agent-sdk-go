@@ -52,6 +52,9 @@ type Query struct {
 	initialized      bool
 	initializeResult map[string]interface{}
 	isStreamingMode  bool
+
+	// run tracks when the CLI is done with the run, so stdin can be closed.
+	run *runTracker
 }
 
 // responseResult wraps the response or error from a control request.
@@ -78,12 +81,15 @@ func NewQuery(ctx context.Context, transport transport.Transport, opts *types.Cl
 		mcpServers:      make(map[string]types.MCPServer),
 	}
 
+	var optionsEnv map[string]string
 	if opts != nil {
 		q.canUseTool = opts.CanUseTool
 		q.hooks = opts.Hooks
 		q.agents = opts.Agents
 		q.excludeDynamicSections = presetExcludeDynamicSections(opts.SystemPrompt)
+		optionsEnv = opts.Env
 	}
+	q.run = newRunTracker(q.canUseTool != nil || len(q.hooks) > 0, RunEndCeiling(optionsEnv))
 
 	return q
 }
@@ -296,6 +302,8 @@ func (q *Query) messageLoop() {
 	// CLI was gone. routeMessage, the channel's only sender, runs on this
 	// goroutine, so nothing can send after the close.
 	defer q.closeMessages()
+	// Nothing can wait on the run once the reader is gone.
+	defer q.run.finish()
 
 	messages := q.transport.ReadMessages(q.ctx)
 	q.logger.Debug("Message routing loop started")
@@ -350,7 +358,10 @@ func (q *Query) routeMessage(msg types.Message) error {
 		return types.NewControlProtocolError("invalid control_request message type")
 	}
 
-	// Regular message - send to consumer
+	// Regular message - track the run, then send to consumer
+	if q.run.observe(msg) {
+		return nil
+	}
 	select {
 	case q.messagesChan <- msg:
 		return nil
@@ -894,8 +905,13 @@ func (q *Query) GetContextUsage(ctx context.Context) (*types.ContextUsageRespons
 // AddMCPServer adds an MCP server for handling MCP messages.
 func (q *Query) AddMCPServer(name string, server types.MCPServer) {
 	q.mu.Lock()
-	defer q.mu.Unlock()
 	q.mcpServers[name] = server
+	q.mu.Unlock()
+
+	// An SDK MCP server answers the CLI over stdin.
+	q.run.mu.Lock()
+	q.run.bidirectional = true
+	q.run.mu.Unlock()
 }
 
 // matchesToolName checks if a tool name matches a matcher pattern.
