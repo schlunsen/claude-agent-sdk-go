@@ -2,7 +2,7 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
-## [Unreleased]
+## [0.13.0] - 2026-10-09
 
 ### Changed
 - `Query`'s message channel now closes when the CLI exits, not at the first `ResultMessage`.
@@ -12,7 +12,7 @@ All notable changes to the Claude Agent SDK for Go are documented in this file.
   on its own, so the follow-up turns' messages (and their own `ResultMessage`) arrive after
   the first one. With background work this can keep the channel open after the first result,
   up to `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` (10 minutes by default); cancel `ctx` to stop
-  sooner (matches Python SDK v0.2.160)
+  sooner (matches Python SDK v0.2.160) (#75)
 
 ### Fixed
 - With hooks or `CanUseTool`, stdin stays open until the CLI reports the session `idle`, so
@@ -23,10 +23,10 @@ All notable changes to the Claude Agent SDK for Go are documented in this file.
   `CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS` to see them. Between turns the wait is bounded by
   `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` (`0` for no limit). CLIs that send no session state
   fall back to the first result with no background agent in flight (matches Python SDK
-  v0.2.160)
+  v0.2.160) (#75)
 
 ### Added
-- `TaskStartedMessage.TaskType` (e.g. `local_agent`, `local_workflow`, `local_bash`)
+- `TaskStartedMessage.TaskType` (e.g. `local_agent`, `local_workflow`, `local_bash`) (#75)
 
 ## [0.12.0] - 2026-10-03
 
