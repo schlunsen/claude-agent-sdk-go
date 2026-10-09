@@ -574,6 +574,7 @@ type TaskBudget struct {
 type TaskStartedMessage struct {
 	Type      string `json:"type"` // "task_started"
 	TaskID    string `json:"task_id"`
+	TaskType  string `json:"task_type,omitempty"` // e.g. "local_agent", "local_workflow", "local_bash"
 	SessionID string `json:"session_id,omitempty"`
 }
 

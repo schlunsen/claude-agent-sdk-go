@@ -22,6 +22,10 @@ type Transport interface {
 	// The data should be a complete JSON line (without the trailing newline - it will be added).
 	Write(ctx context.Context, data string) error
 
+	// EndInput closes stdin to signal the end of input, leaving the process to
+	// finish its work and exit on its own. Later writes fail.
+	EndInput(ctx context.Context) error
+
 	// ReadMessages returns a channel of incoming messages from subprocess stdout.
 	// The channel is closed when the subprocess exits or an error occurs.
 	// Messages are parsed from JSON lines and returned as Message interface types.
